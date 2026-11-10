@@ -20,7 +20,7 @@ Prototype of a desktop without Omarchy, on Arch and Fedora from one branch. Dele
 
 ## 3. Fedora specifics
 
-- Hyprland stack: Fedora repos vs COPR (solopasha/hyprland), pick per package.
+- Hyprland stack: `hyprland` is not in the Fedora 45 repos (checked 2026-11-10), so COPR (solopasha/hyprland or similar). Check each hypr* package.
 - AUR packages from dev-env (zen-browser, spotatui, visual-studio-code, ...): Flatpak, vendor repo or install script.
 - Kernel/hibernate, sudo-rs, kanata, ydotool: check each one.
 
