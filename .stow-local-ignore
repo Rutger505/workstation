@@ -1,0 +1,10 @@
+\.git
+\.gitignore
+\.gitkeep
+\.idea
+^/README.*
+^/CLAUDE.*
+^/PLAN.*
+^/install.*
+^/bin
+/\.claude/(?!CLAUDE\.md$|settings\.json$|skills($|/)).*

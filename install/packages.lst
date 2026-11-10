@@ -1,0 +1,1 @@
+# Same package name on Arch and Fedora. Distro-specific names go in packages.<distro>.lst.

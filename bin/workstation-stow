@@ -1,0 +1,17 @@
+#!/bin/bash
+
+# Stow links a whole directory when it doesn't exist yet, but some programs ignore symlinked
+# directories, like systemd with drop-in directories. These get created as real directories.
+real_dirs=(
+)
+
+cd "$(dirname "$(realpath "$0")")/.." || exit 1
+
+for dir in "${real_dirs[@]}"; do
+  if [ -L "$HOME/$dir" ]; then
+    rm "$HOME/$dir"
+  fi
+  mkdir -p "$HOME/$dir"
+done
+
+stow --restow --target="$HOME" "$@" .
