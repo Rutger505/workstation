@@ -37,6 +37,7 @@ Scripts see the distro in `$WORKSTATION_DISTRO`.
   The group name is the file name without the distro suffix.
 - `install/*.sh`: setup steps, run alphabetically after the packages are installed.
 - `bin/`: on `PATH`, not stowed.
+- `test/vm`: headless test VM (QEMU/KVM, Hyprland on llvmpipe), see README.
 - Everything else (`.config/`, `.claude/`, `.ssh/`) is stowed into `$HOME`.
   `.stow-local-ignore` lists what isn't.
 

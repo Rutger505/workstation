@@ -1,0 +1,151 @@
+#!/usr/bin/env bash
+# Headless test VM for workstation: KVM, no GPU, Hyprland renders in software (llvmpipe).
+# Screen via QMP screendump, input via QMP send-key, shell via SSH.
+#
+#   test/vm <distro> up               start (creates disk from the base image the first time)
+#   test/vm <distro> ssh [CMD...]     shell / command in the guest (user arch, key auth)
+#   test/vm <distro> shot [FILE]      screenshot as PNG (default $VM_DIR/<distro>.png)
+#   test/vm <distro> key COMBO...     press keys, QEMU names: meta_l-ret, ctrl-alt-f2, a, spc
+#   test/vm <distro> type TEXT        type text (a-z, 0-9, space, a few symbols)
+#   test/vm <distro> down             power off (hard after 30s)
+#   test/vm <distro> save|restore N   disk snapshot N (VM must be down)
+#   test/vm <distro> reset            throw away the disk, back to the plain base image
+#   test/vm <distro> status
+#
+# Distros: arch (official arch-boxes basic image). fedora: TODO.
+# Env: VM_DIR (~/.cache/workstation-vm), VM_MEM (2048), VM_CPUS (2), VM_SSH_PORT (2222 arch).
+set -euo pipefail
+
+VM_DIR=${VM_DIR:-$HOME/.cache/workstation-vm}
+VM_MEM=${VM_MEM:-2048}
+VM_CPUS=${VM_CPUS:-2}
+
+die() { echo "vm: $*" >&2; exit 1; }
+
+[[ $# -ge 2 ]] || { sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'; exit 1; }
+distro=$1 cmd=$2
+shift 2
+
+case $distro in
+  arch)
+    base_url=https://geo.mirror.pkgbuild.com/images/latest/Arch-Linux-x86_64-basic.qcow2
+    guest_user=arch guest_pass=arch
+    port=${VM_SSH_PORT:-2222}
+    ;;
+  *) die "unknown distro '$distro' (arch)" ;;
+esac
+
+base=$VM_DIR/$distro-base.qcow2
+disk=$VM_DIR/$distro.qcow2
+qmp_sock=$VM_DIR/$distro.qmp
+pidfile=$VM_DIR/$distro.pid
+mkdir -p "$VM_DIR"
+
+running() { [[ -f $pidfile ]] && kill -0 "$(cat "$pidfile")" 2>/dev/null; }
+
+qmp() { # qmp '{"execute": ...}' -> raw replies
+  running || die "$distro is not running"
+  printf '{"execute":"qmp_capabilities"}\n%s\n' "$1" | socat -t 2 - "UNIX-CONNECT:$qmp_sock"
+}
+
+ssh_opts=(-p "$port" -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o ConnectTimeout=5)
+
+# shellcheck disable=SC2029 # args are meant to run in the guest
+ssh_guest() { ssh "${ssh_opts[@]}" "$guest_user@127.0.0.1" "$@"; }
+
+wait_ssh() {
+  local i
+  for ((i = 0; i < 90; i++)); do
+    if sshpass -p "$guest_pass" ssh "${ssh_opts[@]}" -o PubkeyAuthentication=no "$guest_user@127.0.0.1" true 2>/dev/null; then
+      return 0
+    fi
+    sleep 2
+  done
+  die "no SSH after 3 minutes"
+}
+
+authorize_key() {
+  local key
+  key=$(cat "$HOME/.ssh/id_ed25519.pub")
+  sshpass -p "$guest_pass" ssh "${ssh_opts[@]}" -o PubkeyAuthentication=no "$guest_user@127.0.0.1" \
+    "mkdir -p ~/.ssh && chmod 700 ~/.ssh && grep -qxF '$key' ~/.ssh/authorized_keys 2>/dev/null || echo '$key' >> ~/.ssh/authorized_keys"
+}
+
+send_key() { # one combo, e.g. meta_l-ret
+  local keys=() k
+  IFS=- read -ra parts <<<"$1"
+  for k in "${parts[@]}"; do keys+=("{\"type\":\"qcode\",\"data\":\"$k\"}"); done
+  qmp "{\"execute\":\"send-key\",\"arguments\":{\"keys\":[$(IFS=,; echo "${keys[*]}")]}}" >/dev/null
+  sleep 0.05
+}
+
+char_key() {
+  case $1 in
+    [a-z0-9]) echo "$1" ;;
+    [A-Z]) echo "shift-${1,,}" ;;
+    ' ') echo spc ;; '-') echo minus ;; '.') echo dot ;; '/') echo slash ;;
+    '_') echo shift-minus ;; ':') echo shift-semicolon ;; '=') echo equal ;;
+    *) die "can't type '$1'" ;;
+  esac
+}
+
+case $cmd in
+  up)
+    running && { echo "$distro already running (ssh port $port)"; exit 0; }
+    if [[ ! -f $base ]]; then
+      echo "downloading $base_url"
+      curl -fL --progress-bar "$base_url" -o "$base.part" && mv "$base.part" "$base"
+    fi
+    [[ -f $disk ]] || qemu-img create -q -f qcow2 -b "$base" -F qcow2 "$disk"
+    qemu-system-x86_64 \
+      -name "workstation-$distro" -machine q35,accel=kvm -cpu host -smp "$VM_CPUS" -m "$VM_MEM" \
+      -drive "file=$disk,if=virtio,discard=unmap" \
+      -device virtio-vga -display none \
+      -device virtio-keyboard-pci -device virtio-tablet-pci \
+      -netdev "user,id=net0,hostfwd=tcp:127.0.0.1:$port-:22" -device virtio-net-pci,netdev=net0 \
+      -qmp "unix:$qmp_sock,server,nowait" \
+      -daemonize -pidfile "$pidfile"
+    echo "booting $distro, waiting for SSH on port $port"
+    wait_ssh
+    authorize_key
+    echo "up: test/vm $distro ssh"
+    ;;
+  ssh) ssh_guest "$@" ;;
+  shot)
+    out=$(realpath -m "${1:-$VM_DIR/$distro.png}")
+    rm -f "$out"
+    qmp "{\"execute\":\"screendump\",\"arguments\":{\"filename\":\"$out\",\"format\":\"png\"}}" >/dev/null
+    for ((i = 0; i < 20; i++)); do [[ -s $out ]] && break; sleep 0.25; done
+    [[ -s $out ]] || die "screendump failed"
+    echo "$out"
+    ;;
+  key) for combo in "$@"; do send_key "$combo"; done ;;
+  type)
+    text="$*"
+    for ((i = 0; i < ${#text}; i++)); do send_key "$(char_key "${text:i:1}")"; done
+    ;;
+  down)
+    running || { echo "$distro not running"; exit 0; }
+    qmp '{"execute":"system_powerdown"}' >/dev/null
+    for ((i = 0; i < 30; i++)); do running || break; sleep 1; done
+    running && { qmp '{"execute":"quit"}' >/dev/null || true; sleep 1; }
+    rm -f "$pidfile" "$qmp_sock"
+    echo "$distro down"
+    ;;
+  save | restore)
+    [[ $# -eq 1 ]] || die "$cmd needs a snapshot name"
+    running && die "$cmd needs the VM down"
+    if [[ $cmd == save ]]; then qemu-img snapshot -c "$1" "$disk"; else qemu-img snapshot -a "$1" "$disk"; fi
+    echo "$cmd $1 done"
+    ;;
+  reset)
+    running && die "reset needs the VM down"
+    rm -f "$disk"
+    echo "$distro disk removed; next up starts from the base image"
+    ;;
+  status)
+    if running; then echo "$distro running (pid $(cat "$pidfile"), ssh port $port)"; else echo "$distro down"; fi
+    [[ -f $disk ]] && qemu-img snapshot -l "$disk" | tail -n +3 | awk '{print "snapshot: " $2}' || true
+    ;;
+  *) die "unknown command '$cmd'" ;;
+esac

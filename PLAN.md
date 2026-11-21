@@ -113,7 +113,9 @@ Placeholder: will be refined/replaced later, keep colors in one place so swappin
 ## 1. Test machines
 
 - Proxmox VMs: minimal Arch (archinstall, no profile, btrfs + LUKS, Limine, ESP ≥ 2 GB) and Fedora Everything minimal (btrfs + LUKS), with snapshots right after the base install so every `install.sh` run starts clean.
-- Hyprland in a VM: virtio-gpu with virgl or GPU passthrough; check the session starts before building on it.
+- Hyprland in a VM: works headless on software rendering (llvmpipe) with `test/vm` (QEMU/KVM, no GPU needed; checked 2026-11-21: Hyprland 0.57.2 starts, keys via QMP, screenshots). Good for install runs, configs, bar, binds, hyprlock; not for performance. virgl (Hyprland wiki "Running in a VM") only on a host with a GPU.
+- `test/vm arch` uses the arch-boxes basic image (btrfs, GRUB, no LUKS): fine for `install.sh`, not for Limine/LUKS/boot snapshots. Those need a real archinstall VM.
+- TODO: `test/vm fedora` (Fedora Cloud qcow2 + cloud-init seed for user/SSH key).
 
 ## 2. Desktop base (replaces what Omarchy provides)
 

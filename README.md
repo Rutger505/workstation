@@ -15,3 +15,15 @@ git clone git@github.com:Rutger505/workstation.git ~/.local/share/workstation
 ```
 
 `install.sh` is safe to rerun. It asks for the optional groups (`install/optional/`) and remembers the choice in `~/.config/workstation/optional-packages.conf`.
+
+## Testing
+
+`test/vm` runs a headless QEMU/KVM test VM; Hyprland renders in software (llvmpipe), so no GPU is needed.
+
+```bash
+test/vm arch up                 # boots the Arch basic image, SSH on 127.0.0.1:2222
+test/vm arch ssh                # user arch
+test/vm arch key meta_l-q       # press keys (QEMU key names)
+test/vm arch shot /tmp/s.png    # screenshot
+test/vm arch down               # then: save/restore <name>, reset
+```
