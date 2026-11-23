@@ -138,7 +138,7 @@ Placeholder: will be refined/replaced later, keep colors in one place so swappin
   - Idle inhibit: Hyprland `idleinhibit fullscreen` window rule + Super+Ctrl+I toggle with a bar indicator.
 - Monitor popup memory: choices stored per monitor (make/model/serial from `hyprctl monitors`), reapplied silently on reconnect.
 - Screenshots and recording: grim, slurp, satty, gpu-screen-recorder.
-- Webcam photo (Super+Ctrl+C): ffmpeg grabs one frame from v4l2 (skip first ~10 frames so auto-exposure settles, ~0.5-1s), saves to ~/Pictures/Webcam/<timestamp>.jpg, notification with thumbnail. Desktop: only if a webcam is connected, else notify "no camera". Test in VM with a fake v4l2loopback device.
+- Webcam photo (Super+Ctrl+C): ffmpeg grabs one frame from v4l2 (skip first ~10 frames so auto-exposure settles, ~0.5-1s), saves to ~/Pictures/Webcam/<timestamp>.jpg, copies it to the clipboard (wl-copy) and opens it in imv. No shutter sound or flash. Desktop: only if a webcam is connected, else notify "no camera". Test in VM with a fake v4l2loopback device.
 - Audio, bluetooth, network: pipewire + wireplumber + wiremix, bluez + bluetui, NetworkManager or iwd + impala.
 - Theming: Granite palette, JetBrainsMono NL Nerd Font, cursor, GTK/Qt dark mode. No theme switcher.
 - Own scripts for the `omarchy-*` commands dev-env calls: lock, shutdown, launch-or-focus, webapp install, tzupdate, Tailscale service.
