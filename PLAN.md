@@ -117,7 +117,7 @@ Placeholder: will be refined/replaced later, keep colors in one place so swappin
 
 Each part tested in `test/vm`, committed + pushed on its own.
 
-1. Real Arch install in the test VM: official ISO headless + archinstall with a fixed config (btrfs, Limine, ESP 2 GB, user arch). Variants `arch` (no LUKS, like the desktop) and `arch-luks`. VM snapshot after base install; replaces the arch-boxes image.
+1. Done (2026-11-27): `test/vm <distro> install` boots the latest ISO under OVMF, archinstall 4.5 with `test/archinstall/` (btrfs @/@home/@log/@pkg zstd, Limine, ESP 2 GiB at /boot, user arch, systemd-networkd from the ISO), snapshot `base`. Variants `arch` (no LUKS, like the desktop) and `arch-luks` (encrypt hook, passphrase typed over QMP).
 2. System layer: paru, snapper (weekly + 5 update snapshots via snap-pac), limine-snapper-sync, kernel args without quiet/splash, login (autologin once per boot → uwsm → Hyprland). Test: update, boot a snapshot from the Limine menu.
 3. Hyprland core: `hyprland.lua`, keybindings, tiling rules, monitor-bound workspaces, monitor popup (test with a second QEMU head), host files by hostname.
 4. Bar: waybar with all modules.
@@ -131,7 +131,7 @@ Not in the VM, Rutger on hardware: battery/charger, lid, hibernate, real webcam,
 ## 1. Test machines
 
 - Hyprland in a VM: works headless on software rendering (llvmpipe) with `test/vm` (QEMU/KVM, no GPU needed; checked 2026-11-21: Hyprland 0.57.2 starts, keys via QMP, screenshots). Good for install runs, configs, bar, binds, hyprlock; not for performance. virgl (Hyprland wiki "Running in a VM") only on a host with a GPU.
-- `test/vm arch` uses the arch-boxes basic image (btrfs, GRUB, no LUKS): fine for `install.sh`, not for Limine/LUKS/boot snapshots. Replaced by a real archinstall VM (build order 1).
+- `test/vm arch`/`arch-luks`: real archinstall (UEFI, Limine, btrfs), so boot and snapshot work is testable. `arch-luks` adds `console=ttyS0 console=tty0 loglevel=7` (VM only) so `up` can see the LUKS prompt coming on serial.
 - No Fedora test VM: Fedora only has to be theoretically correct (package names via `docker run --rm fedora dnf info`).
 
 ## 2. Desktop base (replaces what Omarchy provides)

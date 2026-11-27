@@ -18,12 +18,14 @@ git clone git@github.com:Rutger505/workstation.git ~/.local/share/workstation
 
 ## Testing
 
-`test/vm` runs a headless QEMU/KVM test VM; Hyprland renders in software (llvmpipe), so no GPU is needed.
+`test/vm` runs a headless QEMU/KVM test VM (UEFI via OVMF); Hyprland renders in software (llvmpipe), so no GPU is needed.
+Distros: `arch` (btrfs + Limine, like the desktop) and `arch-luks` (same with LUKS root, like the laptop). Host needs qemu, edk2-ovmf, socat, sshpass, jq.
 
 ```bash
-test/vm arch up                 # boots the Arch basic image, SSH on 127.0.0.1:2222
-test/vm arch ssh                # user arch
+test/vm arch install            # archinstall from the latest ISO (test/archinstall/), snapshot "base"
+test/vm arch up                 # SSH on 127.0.0.1:2222 (arch-luks: 2223, passphrase typed for you)
+test/vm arch ssh                # user arch, password arch
 test/vm arch key meta_l-q       # press keys (QEMU key names)
 test/vm arch shot /tmp/s.png    # screenshot
-test/vm arch down               # then: save/restore <name>, reset
+test/vm arch down               # then: save/restore <name>, reset (= restore base)
 ```

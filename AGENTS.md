@@ -40,7 +40,7 @@ Arch leads: if Fedora blocks a feature, no hoops; build it for Arch and add a Fe
   The group name is the file name without the distro suffix.
 - `install/*.sh`: setup steps, run alphabetically after the packages are installed.
 - `bin/`: on `PATH`, not stowed.
-- `test/vm`: headless test VM (QEMU/KVM, Hyprland on llvmpipe), see README.
+- `test/vm`: headless test VM (QEMU/KVM + OVMF, Hyprland on llvmpipe), see README; `test/archinstall/`: its archinstall config.
 - Everything else (`.config/`, `.claude/`, `.ssh/`) is stowed into `$HOME`.
   `.stow-local-ignore` lists what isn't.
 
@@ -62,10 +62,12 @@ Arch leads: if Fedora blocks a feature, no hoops; build it for Arch and add a Fe
 
 ## Test VM
 
-- `test/vm arch up|ssh|key|type|shot|down|save|restore|reset|status` (usage at the top of the script, README).
-  Headless QEMU/KVM, Hyprland on llvmpipe; look at the screen via `shot`.
-  Always `test/vm arch down` when done.
-- Guest: user arch, 2 GB (`VM_MEM`), arch-boxes basic image = btrfs + GRUB, no LUKS/Limine: fine for `install.sh`, not for boot/snapshot work.
-- Hyprland on tty1 via getty autologin + `start-hyprland`; over ssh use `hyprctl -i 0`.
+- `test/vm arch|arch-luks install|up|ssh|key|type|shot|down|save|restore|reset|status` (usage at the top of the script, README).
+  Headless QEMU/KVM + OVMF; look at the screen via `shot`, kernel log in `~/.cache/workstation-vm/<distro>.serial.log` (arch-luks).
+  Always `test/vm <distro> down` when done.
+- `install`: latest ISO (sha256 checked), root SSH via a cloud-init seed, archinstall with `test/archinstall/*.json`, snapshot `base`. `reset` = `restore base`.
+- Guest: user/password arch (sudo), root locked, 2 GB (`VM_MEM`), Limine + btrfs, ESP 2 GiB at /boot. `arch-luks`: LUKS root, passphrase arch, `up` types it.
+- archinstall JSON schema changes per release: check it against the ISO's archinstall when `install` breaks.
+- Disk: each installed qcow2 ~2 GB, ISO 1.3 GB; delete what's not needed (`install` recreates).
 - Host needs `qemu-hw-display-virtio-vga` (not in qemu-base). virgl impossible without a host GPU. `test/vm fedora`: TODO.
 - Not testable in the VM: battery, lid, suspend, multi-monitor, real GPU → real hardware.

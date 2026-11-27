@@ -1,0 +1,14 @@
+{
+    "disk_config": {
+        "disk_encryption": {
+            "encryption_type": "luks",
+            "partitions": [
+                "root"
+            ],
+            "lvm_volumes": []
+        }
+    },
+    "custom_commands": [
+        "sed -i '/^ *cmdline:/ s/$/ console=ttyS0 console=tty0 loglevel=7/' $(find /boot -name limine.conf)"
+    ]
+}
