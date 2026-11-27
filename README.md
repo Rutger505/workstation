@@ -14,7 +14,7 @@ git clone git@github.com:Rutger505/workstation.git ~/.local/share/workstation
 ~/.local/share/workstation/install.sh                 # then reboot
 ```
 
-`install.sh` is safe to rerun. It asks for the optional groups (`install/optional/`) and remembers the choice in `~/.config/workstation/optional-packages.conf`.
+`install.sh` is safe to rerun. It asks for the optional groups (`install/optional/`) and remembers the choice in `~/.config/workstation/optional-packages.conf` (without a terminal it keeps that choice).
 
 ## Testing
 
@@ -25,6 +25,7 @@ Distros: `arch` (btrfs + Limine, like the desktop) and `arch-luks` (same with LU
 test/vm arch install            # archinstall from the latest ISO (test/archinstall/), snapshot "base"
 test/vm arch up                 # SSH on 127.0.0.1:2222 (arch-luks: 2223, passphrase typed for you)
 test/vm arch ssh                # user arch, password arch
+test/vm arch sync               # working tree to the guest, then: test/vm arch ssh '~/.local/share/workstation/install.sh'
 test/vm arch key meta_l-q       # press keys (QEMU key names)
 test/vm arch shot /tmp/s.png    # screenshot
 test/vm arch down               # then: save/restore <name>, reset (= restore base)

@@ -31,6 +31,12 @@ for_this_distro() {
 select_optional_groups() {
   local groups current preselect="" i=0 selected
   groups=$(for file in $(for_this_distro optional/*); do name=$(basename "${file%.*}"); echo "${name%%.*}"; done | sort -u)
+  mkdir -p "$(dirname "$optional_file")"
+  # Without a terminal (e.g. over ssh in test/vm) keep the saved choice, none on the first run
+  if [ ! -t 0 ]; then
+    touch "$optional_file"
+    return
+  fi
   current=$(cat "$optional_file" 2>/dev/null || true)
 
   while read -r group; do
@@ -49,7 +55,6 @@ select_optional_groups() {
     --preview 'cat optional/{}.* 2>/dev/null | head -n 50' \
     <<<"$groups")
 
-  mkdir -p "$(dirname "$optional_file")"
   echo "$selected" >"$optional_file"
 }
 
@@ -57,6 +62,14 @@ link_configs() {
   # Missing directories get folded into a symlink to the repo, and apps write keys, credentials and unit links into these
   mkdir -p -m 700 "$HOME/.ssh" "$HOME/.claude" "$HOME/.local/bin" "$HOME/.config/systemd/user"
   ../bin/workstation-stow
+}
+
+# Files outside $HOME, which stow can't link: copied, so a file deleted from system/ stays on the machine
+install_system_files() {
+  local file
+  while IFS= read -r -d '' file; do
+    sudo install -Dm644 "$file" "/${file#../system/}"
+  done < <(find ../system -type f -print0)
 }
 
 setup_repos
@@ -76,6 +89,8 @@ mapfile -t packages < <(sed 's/#.*//; s/[[:space:]]*$//' "${lists[@]}" | grep .)
 if [ "${#packages[@]}" -gt 0 ]; then
   install_packages "${packages[@]}"
 fi
+
+install_system_files
 
 for script in "${scripts[@]}"; do
   echo "Running $script"

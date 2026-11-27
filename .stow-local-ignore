@@ -3,8 +3,11 @@
 \.gitkeep
 \.idea
 ^/README.*
+^/AGENTS.*
 ^/CLAUDE.*
 ^/PLAN.*
 ^/install.*
 ^/bin
 /\.claude/(?!CLAUDE\.md$|settings\.json$|skills($|/)).*
+^/system
+^/test

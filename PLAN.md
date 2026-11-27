@@ -118,7 +118,7 @@ Placeholder: will be refined/replaced later, keep colors in one place so swappin
 Each part tested in `test/vm`, committed + pushed on its own.
 
 1. Done (2026-11-27): `test/vm <distro> install` boots the latest ISO under OVMF, archinstall 4.5 with `test/archinstall/` (btrfs @/@home/@log/@pkg zstd, Limine, ESP 2 GiB at /boot, user arch, systemd-networkd from the ISO), snapshot `base`. Variants `arch` (no LUKS, like the desktop) and `arch-luks` (encrypt hook, passphrase typed over QMP).
-2. System layer: paru, snapper (weekly + 5 update snapshots via snap-pac), limine-snapper-sync, kernel args without quiet/splash, login (autologin once per boot → uwsm → Hyprland). Test: update, boot a snapshot from the Limine menu.
+2. Done (2026-11-27): paru, snapper (weekly timeline + last 5 updates via snap-pac), limine-snapper-sync + limine-mkinitcpio-hook (cmdline in `/etc/default/limine`, no quiet/splash), zsh + `.zprofile` → uwsm → Hyprland, tty1 autologin once per boot. Tested in `arch`: snapshot boot from the menu, logout → password prompt. VM snapshot `system`. Not tested: `arch-luks`.
 3. Hyprland core: `hyprland.lua`, keybindings, tiling rules, monitor-bound workspaces, monitor popup (test with a second QEMU head), host files by hostname.
 4. Bar: waybar with all modules.
 5. Lock, idle, power: hyprlock, hypridle (laptop), power menu, idle inhibit. Lid/hibernate only partly testable.
@@ -136,14 +136,12 @@ Not in the VM, Rutger on hardware: battery/charger, lid, hibernate, real webcam,
 
 ## 2. Desktop base (replaces what Omarchy provides)
 
-- Arch: switch `install/distro/arch.sh` from yay to paru.
-- Snapshots: snapper. Timeline config: weekly only, `TIMELINE_LIMIT_WEEKLY` keeps the week-old one. Update snapshots via snap-pac (Arch) / dnf plugin (Fedora) with `NUMBER_LIMIT=5`.
-- Boot: no `quiet`/`splash` kernel args, no Plymouth, plain LUKS prompt, default stop timeouts.
-- Bootable snapshots: Limine + limine-snapper-sync (AUR), text menu only (Rutger OK'd over systemd-boot).
+- Done (part 2): paru; snapper (`install/snapper.sh`: weekly timer drop-in in `system/`, `TIMELINE_LIMIT_WEEKLY=3`, `NUMBER_LIMIT=10` = 5 updates since pre and post count separately); bootable snapshots (`install/limine.arch.sh`); no quiet/splash, no Plymouth, default stop timeouts; session (`install/login.sh`, `.zprofile`).
+- Bootable snapshots: Limine + limine-snapper-sync, text menu only (Rutger OK'd over systemd-boot).
   - Why not systemd-boot: it only reads the FAT ESP, kernels live there and aren't in the btrfs snapshot. A plain `rootflags=subvol=<snapshot>` entry boots the current kernel against the snapshot's old `/usr/lib/modules` → missing modules after any kernel update. Needs a kernel + initramfs copy per snapshot on the ESP; limine-snapper-sync does exactly that, nothing maintained does it for systemd-boot.
   - ESP size: ≥ 2 GB for the per-snapshot kernel copies.
-- Session: getty autologin on tty1 + uwsm starting Hyprland (no greeter), xdg-desktop-portal-hyprland, polkit agent.
-  - Pitfall: with plain autologin a Hyprland crash while locked respawns an unlocked session. Autologin only once per boot (flag in /run); after that tty1 asks for the password.
+- Session pitfall: with plain autologin a Hyprland crash while locked respawns an unlocked session, hence autologin once per boot (`/run/workstation-autologin`).
+- TODO: a font package; with Hyprland's default config all text is tofu (no fonts installed yet), kitty included.
 - Hyprland base config: own `hyprland.lua` without Omarchy's bootstrap, defaults, toggles and paths modules. Monitor-bound workspaces, tile-by-default window rules, keybindings above.
 - Monitor popup: script on Hyprland's `monitoradded` event (socket2) shows a fuzzel menu, applies monitor + workspace rules, moves workspaces.
 - Bar: waybar. Custom modules: battery (watts + time-left/time-to-full format), battery menu on Super+Ctrl+P (charger W/V/A from `/sys/class/power_supply/ucsi-source-psy-*` or `/sys/class/typec`, fallback battery `voltage_now`/`current_now`; check what the laptop exposes), Claude usage (poll every few minutes), Tailscale (status only, no click action). mpris for now playing.
@@ -164,8 +162,10 @@ Not in the VM, Rutger on hardware: battery/charger, lid, hibernate, real webcam,
 - Hyprland stack: `hyprland` is not in the Fedora 45 repos (checked 2026-11-10), so COPR (solopasha/hyprland or similar). Check each hypr* package.
 - AUR packages from dev-env (zen-browser, spotatui, visual-studio-code, ...): Flatpak, vendor repo or install script.
 - Kernel/hibernate, sudo-rs, kanata, ydotool: check each one.
-- Snapshots: snapper works on Fedora; update snapshots via the dnf snapper plugin.
-- TODO: bootable snapshots. limine-snapper-sync isn't packaged for Fedora; Fedora's default is GRUB, so grub-btrfs is the likely route.
+- Hyprland stack not in Fedora (checked 2026-11-27): hyprland, uwsm, xdg-desktop-portal-hyprland, hyprpolkitagent need a COPR (solopasha/hyprland or similar); now in `packages.arch.lst`.
+- Snapshots: `snapper` (same name, in `packages.lst`) + `python3-dnf-plugin-snapper` instead of snap-pac; `install/snapper.sh` is shared. Check that the plugin's snapshots use cleanup "number".
+- TODO: bootable snapshots. limine-snapper-sync isn't packaged for Fedora; Fedora's default is GRUB, so grub-btrfs is the likely route. Its kernel cmdline: no `rhgb quiet` (Fedora's default) via grubby.
+- `install/login.sh` should work as is (agetty via PATH, zsh at /usr/bin/zsh).
 - TODOs for features blocked on Fedora go here.
 
 ## 4. Port from dev-env

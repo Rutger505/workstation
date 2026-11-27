@@ -22,7 +22,7 @@ Arch leads: if Fedora blocks a feature, no hoops; build it for Arch and add a Fe
   Use this when the package name or setup differs, instead of `if` blocks in shared scripts.
 - A package goes in `packages.lst` only if the name is identical on both.
   Otherwise one line in `packages.arch.lst` and one in `packages.fedora.lst`.
-- Arch: official repos, chaotic-aur, AUR via yay.
+- Arch: official repos, chaotic-aur, AUR via paru.
   Fedora: Fedora, RPM Fusion, COPRs listed in `install/distro/fedora.sh`.
   Not packaged anywhere: an install script.
 - Configs (`.config/`) are shared.
@@ -31,7 +31,7 @@ Arch leads: if Fedora blocks a feature, no hoops; build it for Arch and add a Fe
 ## Layout
 
 - `install.sh`: the installer.
-  Sets up repos, stows the configs, picks optional groups with fzf, installs the lists, then runs `install/*.sh` and the chosen `install/optional/*.sh`.
+  Sets up repos, stows the configs, picks optional groups with fzf (without a terminal: keeps the saved choice), installs the lists, copies `system/`, then runs `install/*.sh` and the chosen `install/optional/*.sh`.
   One run plus a reboot must give a finished machine.
 - `install/distro/<id>.sh`: package manager layer.
 - `install/packages*.lst`: packages every machine gets.
@@ -39,6 +39,7 @@ Arch leads: if Fedora blocks a feature, no hoops; build it for Arch and add a Fe
 - `install/optional/<group>[.<distro>].lst` / `.sh`: optional groups.
   The group name is the file name without the distro suffix.
 - `install/*.sh`: setup steps, run alphabetically after the packages are installed.
+- `system/`: files for outside `$HOME` (mirrors `/`), copied as root by `install.sh`; removing one here doesn't remove it from machines. Files that need the user or machine (getty autologin, kernel cmdline) are written by their install script instead.
 - `bin/`: on `PATH`, not stowed.
 - `test/vm`: headless test VM (QEMU/KVM + OVMF, Hyprland on llvmpipe), see README; `test/archinstall/`: its archinstall config.
 - Everything else (`.config/`, `.claude/`, `.ssh/`) is stowed into `$HOME`.
@@ -62,11 +63,14 @@ Arch leads: if Fedora blocks a feature, no hoops; build it for Arch and add a Fe
 
 ## Test VM
 
-- `test/vm arch|arch-luks install|up|ssh|key|type|shot|down|save|restore|reset|status` (usage at the top of the script, README).
+- `test/vm arch|arch-luks install|up|ssh|sync|key|type|shot|down|save|restore|reset|status` (usage at the top of the script, README).
+- Test a change: `sync` (working tree incl. uncommitted changes → guest `~/.local/share/workstation`), then `test/vm arch ssh '~/.local/share/workstation/install.sh'` (quote the `~`).
+- Snapshots: `base` (fresh archinstall), `system` (`arch`: part 2 installed and booted once). Delete extra ones (`qemu-img snapshot -d`), host disk is tight. UEFI vars aren't in snapshots: the `Limine` boot entry stays after `restore base`, OVMF skips it.
+- After part 2 Hyprland runs on tty1 via autologin (once per boot). Over ssh: `hyprctl -i 0 ...`; Lua dispatch syntax, e.g. `hyprctl -i 0 dispatch 'hl.dsp.exit()'`.
   Headless QEMU/KVM + OVMF; look at the screen via `shot`, kernel log in `~/.cache/workstation-vm/<distro>.serial.log` (arch-luks).
   Always `test/vm <distro> down` when done.
 - `install`: latest ISO (sha256 checked), root SSH via a cloud-init seed, archinstall with `test/archinstall/*.json`, snapshot `base`. `reset` = `restore base`.
-- Guest: user/password arch (sudo), root locked, 2 GB (`VM_MEM`), Limine + btrfs, ESP 2 GiB at /boot. `arch-luks`: LUKS root, passphrase arch, `up` types it.
+- Guest: user/password arch (passwordless sudo, set by `up`), root locked, 2 GB (`VM_MEM`), Limine + btrfs, ESP 2 GiB at /boot. `arch-luks`: LUKS root, passphrase arch, `up` types it.
 - archinstall JSON schema changes per release: check it against the ISO's archinstall when `install` breaks.
 - Disk: each installed qcow2 ~2 GB, ISO 1.3 GB; delete what's not needed (`install` recreates).
 - Host needs `qemu-hw-display-virtio-vga` (not in qemu-base). virgl impossible without a host GPU. `test/vm fedora`: TODO.

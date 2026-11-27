@@ -9,9 +9,9 @@ setup_repos() {
       https://cdn-mirror.chaotic.cx/chaotic-aur/chaotic-mirrorlist.pkg.tar.zst
     printf '[chaotic-aur]\nInclude = /etc/pacman.d/chaotic-mirrorlist\n' | sudo tee -a /etc/pacman.conf >/dev/null
   fi
-  sudo pacman -Syu --needed --noconfirm yay
+  sudo pacman -Syu --needed --noconfirm paru
 }
 
 install_packages() {
-  yay -S --needed --noconfirm "$@"
+  paru -S --needed --noconfirm "$@"
 }
