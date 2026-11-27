@@ -4,7 +4,8 @@
 #
 #   test/vm <distro> install          fresh archinstall from the latest ISO, then snapshot "base"
 #   test/vm <distro> up               boot (arch-luks: types the passphrase), wait for SSH
-#   test/vm <distro> ssh [CMD...]     shell / command in the guest (user arch, key auth)
+#   test/vm <distro> ssh [CMD...]     shell / command in the guest (user arch, key auth, passwordless sudo)
+#   test/vm <distro> sync             copy the working tree (uncommitted changes too) to ~/.local/share/workstation
 #   test/vm <distro> shot [FILE]      screenshot as PNG (default $VM_DIR/<distro>.png)
 #   test/vm <distro> key COMBO...     press keys, QEMU names: meta_l-ret, ctrl-alt-f2, a, spc
 #   test/vm <distro> type TEXT        type text (a-z, 0-9, space, a few symbols)
@@ -26,7 +27,7 @@ here=$(dirname "$(realpath "$0")")
 
 die() { echo "vm: $*" >&2; exit 1; }
 
-[[ $# -ge 2 ]] || { sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//'; exit 1; }
+[[ $# -ge 2 ]] || { sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//'; exit 1; }
 distro=$1 cmd=$2
 shift 2
 
@@ -190,9 +191,15 @@ case $cmd in
     echo "waiting for SSH on port $port"
     wait_for 180 ssh_pass true || die "no SSH after 3 minutes"
     authorize_key
+    ssh_guest "echo $guest_pass | sudo -S -p '' sh -c 'echo \"$guest_user ALL=(ALL) NOPASSWD: ALL\" >/etc/sudoers.d/test-vm'"
     echo "up: test/vm $distro ssh"
     ;;
   ssh) ssh_guest "$@" ;;
+  sync)
+    tar -C "$here/.." --exclude-vcs --exclude-vcs-ignores -cf - . \
+      | ssh_guest 'rm -rf ~/.local/share/workstation && mkdir -p ~/.local/share/workstation && tar -xf - -C ~/.local/share/workstation'
+    echo "synced to ~/.local/share/workstation: test/vm $distro ssh '~/.local/share/workstation/install.sh'"
+    ;;
   shot)
     out=$(realpath -m "${1:-$VM_DIR/$distro.png}")
     rm -f "$out"
