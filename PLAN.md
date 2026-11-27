@@ -18,12 +18,14 @@ Prototype of a desktop without Omarchy, on Arch and Fedora from one branch. Dele
 - No boot/shutdown eye candy: no Plymouth, no quiet boot, no splash, no graphical login manager.
   - Raw kernel + systemd logs on boot and shutdown, so a service hanging on its stop deadline is visible.
   - Keep systemd's default stop timeouts; seeing the hang is the point, not hiding it.
-  - Plain console prompt for the disk encryption passphrase.
-- Login: the disk passphrase is the only thing typed at boot. No second password on the TTY; Hyprland starts on its own.
+- Disk encryption: chosen per machine at install. Desktop: none. Laptop: probably none. Everything must work with and without LUKS.
+  - With LUKS: plain console passphrase prompt, the only thing typed at boot.
+  - Without LUKS: nothing typed at boot, autologin straight into Hyprland (OK for the desktop at home).
+- Login: no password on the TTY at boot; Hyprland starts on its own.
 
 ### Hyprland
 
-- Idle, laptop only: dim screen to 10% at 4m30s, at 5m lock + suspend (suspend-then-hibernate, same as dev-env incl. hibernate-unlock: the disk passphrase after a hibernate resume unlocks the session).
+- Idle, laptop only: dim screen to 10% at 4m30s, at 5m lock + suspend (suspend-then-hibernate, same as dev-env). Without LUKS: after a hibernate resume just type the password in hyprlock (no hibernate-unlock).
 - Desktop: no idle actions at all, never dims, locks or suspends by itself (Sunshine, SSH). Locks only by hand.
 - Laptop: a fullscreen app (video, game) keeps it from dimming/locking. Super+Ctrl+I toggles idle inhibit by hand.
 - Lid close and suspend always lock first.
@@ -111,12 +113,26 @@ Placeholder: will be refined/replaced later, keep colors in one place so swappin
 - Red `#e06c6c`, green `#8fbf7f`, yellow `#d9c27a`, blue `#7aa2d6`, magenta `#b48ec7`, cyan `#78b8b0`
 - Same palette everywhere: hyprland, waybar, mako, fuzzel, hyprlock, ghostty, btop, nvim, GTK/Qt dark.
 
+## Build order (2026-11-27)
+
+Each part tested in `test/vm`, committed + pushed on its own.
+
+1. Real Arch install in the test VM: official ISO headless + archinstall with a fixed config (btrfs, Limine, ESP 2 GB, user arch). Variants `arch` (no LUKS, like the desktop) and `arch-luks`. VM snapshot after base install; replaces the arch-boxes image.
+2. System layer: paru, snapper (weekly + 5 update snapshots via snap-pac), limine-snapper-sync, kernel args without quiet/splash, login (autologin once per boot → uwsm → Hyprland). Test: update, boot a snapshot from the Limine menu.
+3. Hyprland core: `hyprland.lua`, keybindings, tiling rules, monitor-bound workspaces, monitor popup (test with a second QEMU head), host files by hostname.
+4. Bar: waybar with all modules.
+5. Lock, idle, power: hyprlock, hypridle (laptop), power menu, idle inhibit. Lid/hibernate only partly testable.
+6. Menus and tools: fuzzel, mako, cliphist, emoji, screenshots, recording, webcam (fake camera), battery menu (fake QEMU battery), WiFi/BT/audio TUIs, own scripts replacing `omarchy-*`.
+7. Theme: Granite placeholder + JetBrainsMono NL, colors in one place.
+8. Fedora on paper: Fedora name or TODO for every package of 2-7. No Fedora test VM (Rutger: only has to be theoretically correct).
+
+Not in the VM, Rutger on hardware: battery/charger, lid, hibernate, real webcam, real monitors, GPU performance.
+
 ## 1. Test machines
 
-- Proxmox VMs: minimal Arch (archinstall, no profile, btrfs + LUKS, Limine, ESP ≥ 2 GB) and Fedora Everything minimal (btrfs + LUKS), with snapshots right after the base install so every `install.sh` run starts clean.
 - Hyprland in a VM: works headless on software rendering (llvmpipe) with `test/vm` (QEMU/KVM, no GPU needed; checked 2026-11-21: Hyprland 0.57.2 starts, keys via QMP, screenshots). Good for install runs, configs, bar, binds, hyprlock; not for performance. virgl (Hyprland wiki "Running in a VM") only on a host with a GPU.
-- `test/vm arch` uses the arch-boxes basic image (btrfs, GRUB, no LUKS): fine for `install.sh`, not for Limine/LUKS/boot snapshots. Those need a real archinstall VM.
-- TODO: `test/vm fedora` (Fedora Cloud qcow2 + cloud-init seed for user/SSH key).
+- `test/vm arch` uses the arch-boxes basic image (btrfs, GRUB, no LUKS): fine for `install.sh`, not for Limine/LUKS/boot snapshots. Replaced by a real archinstall VM (build order 1).
+- No Fedora test VM: Fedora only has to be theoretically correct (package names via `docker run --rm fedora dnf info`).
 
 ## 2. Desktop base (replaces what Omarchy provides)
 
@@ -134,7 +150,7 @@ Placeholder: will be refined/replaced later, keep colors in one place so swappin
 - Launcher and menus: fuzzel (also power menu, monitor popup, emoji, clipboard via cliphist). Lighter than walker, no background service.
 - Notifications: mako, popups only.
 - Lock, idle, wallpaper: hyprlock, hypridle on laptop only (dim 4m30s; 5m lock + suspend; lock before sleep), logind lid switch → suspend, hyprpaper.
-  - Per-host: laptop suspend-then-hibernate (port dev-env's sleep.conf + hibernate-unlock, rewritten for hyprlock: its `omarchy-shell lock isLocked` and `/etc/pam.d/omarchy-lock-password` don't exist here). Desktop: no hypridle listeners at all (manual lock only).
+  - Per-host: laptop suspend-then-hibernate (port dev-env's sleep.conf). hibernate-unlock only matters with LUKS; if ever needed, rewrite for hyprlock (its `omarchy-shell lock isLocked` and `/etc/pam.d/omarchy-lock-password` don't exist here). Desktop: no hypridle listeners at all (manual lock only).
   - Idle inhibit: Hyprland `idleinhibit fullscreen` window rule + Super+Ctrl+I toggle with a bar indicator.
 - Monitor popup memory: choices stored per monitor (make/model/serial from `hyprctl monitors`), reapplied silently on reconnect.
 - Screenshots and recording: grim, slurp, satty, gpu-screen-recorder.
