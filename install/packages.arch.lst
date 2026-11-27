@@ -1,6 +1,7 @@
 # Arch-only names (repo, chaotic-aur, AUR).
 hyprland
 hyprpolkitagent
+inotify-tools
 limine-mkinitcpio-hook
 limine-snapper-sync
 snap-pac

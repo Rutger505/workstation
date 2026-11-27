@@ -13,5 +13,5 @@ setup_repos() {
 }
 
 install_packages() {
-  paru -S --needed --noconfirm "$@"
+  paru -S --needed --noconfirm --skipreview "$@"
 }
