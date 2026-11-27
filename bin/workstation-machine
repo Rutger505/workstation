@@ -1,9 +1,12 @@
 #!/bin/bash
-# Prints laptop or desktop: a laptop has a system battery (mice and headsets report theirs with scope Device)
-for supply in /sys/class/power_supply/*; do
+# Prints laptop or desktop: a laptop has a system battery (mice and headsets report theirs with scope Device).
+# `workstation-machine battery` prints that battery's sysfs directory instead, or fails on a desktop.
+# WORKSTATION_POWER_SUPPLY replaces /sys/class/power_supply to test with a fake battery.
+for supply in "${WORKSTATION_POWER_SUPPLY:-/sys/class/power_supply}"/*; do
   [ "$(cat "$supply/type" 2>/dev/null)" = Battery ] || continue
   [ "$(cat "$supply/scope" 2>/dev/null)" = Device ] && continue
-  echo laptop
+  if [ "${1:-}" = battery ]; then echo "$supply"; else echo laptop; fi
   exit 0
 done
+[ "${1:-}" = battery ] && exit 1
 echo desktop

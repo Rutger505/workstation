@@ -1,0 +1,5 @@
+#!/bin/bash
+# Super+Ctrl+P: charger and battery details, laptop only
+details=$(workstation-battery --details)
+[ -n "$details" ] || exit 0
+fuzzel --dmenu --prompt "Battery: " --lines "$(wc -l <<<"$details")" --width 34 <<<"$details" >/dev/null || true

@@ -1,0 +1,11 @@
+#!/bin/bash
+# Tailscale state as waybar JSON, nothing when it isn't installed
+command -v tailscale >/dev/null || exit 0
+{ tailscale status --json 2>/dev/null || echo '{}'; } | jq -c '
+  (.BackendState == "Running") as $on
+  | ([.Peer[]? | select(.ExitNode) | .HostName] | first) as $exit
+  | {
+      text: (if $on then "󰖂 on" else "󰖂 off" end),
+      class: (if $on then "on" else "off" end),
+      tooltip: (if $on then "Tailscale: \(.Self.HostName)" + (if $exit then "\nExit node: \($exit)" else "" end) else "Tailscale off" end)
+    }'

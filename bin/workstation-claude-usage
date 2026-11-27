@@ -1,0 +1,31 @@
+#!/bin/bash
+# Claude subscription limits (5h session, week) as waybar JSON, from the endpoint behind Claude Code's /usage.
+# Borrows Claude Code's OAuth token but never refreshes it: refresh tokens rotate, so that would log Claude Code out.
+# Nothing when not logged in or the token expired (Claude Code refreshes it on its next run).
+set -euo pipefail
+
+credentials=$HOME/.claude/.credentials.json
+cache=${XDG_RUNTIME_DIR:-/tmp}/workstation-claude-usage.json
+[ -r "$credentials" ] || exit 0
+
+if [ ! -s "$cache" ] || [ -n "$(find "$cache" -mmin +4)" ]; then
+  if [ "$(jq '.claudeAiOauth.expiresAt // 0' "$credentials")" -lt "$(date +%s%3N)" ]; then
+    rm -f "$cache"
+  # The header goes through stdin so the token never shows up in the process list
+  elif usage=$(jq -r '"Authorization: Bearer \(.claudeAiOauth.accessToken)"' "$credentials" |
+    curl -sf --max-time 10 -H @- -H "anthropic-beta: oauth-2025-04-20" https://api.anthropic.com/api/oauth/usage); then
+    printf '%s\n' "$usage" >"$cache"
+  fi
+fi
+[ -s "$cache" ] || exit 0
+
+jq -c '
+  def limit($name): (.utilization // 0 | round) as $pct
+    | {pct: $pct, line: "\($name) \($pct)%" + (if .resets_at then ", resets \(.resets_at[0:19] + "Z" | fromdateiso8601 | strflocaltime("%a %H:%M"))" else "" end)};
+  (.five_hour | limit("Session")) as $session
+  | (.seven_day | limit("Week")) as $week
+  | {
+      text: "󰚩 \($session.pct)% \($week.pct)%",
+      tooltip: "Claude usage\n\($session.line)\n\($week.line)",
+      class: (if ([$session.pct, $week.pct] | max) >= 90 then "high" else "" end)
+    }' "$cache"

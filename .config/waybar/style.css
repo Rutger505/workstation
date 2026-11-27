@@ -1,0 +1,66 @@
+@import "colors.css";
+
+* {
+  font-family: "JetBrainsMono NL Nerd Font", monospace;
+  font-size: 13px;
+  border: none;
+  border-radius: 0;
+  min-height: 0;
+  box-shadow: none;
+  text-shadow: none;
+}
+
+window#waybar {
+  background: @background;
+  color: @foreground;
+  border-bottom: 1px solid @inactive;
+}
+
+#workspaces button {
+  padding: 0 6px;
+  color: @muted;
+  background: transparent;
+}
+
+#workspaces button.active {
+  color: @foreground;
+  border-bottom: 2px solid @active;
+}
+
+#workspaces button.urgent {
+  color: @critical;
+}
+
+#workspaces button:hover {
+  background: @inactive;
+}
+
+#clock,
+#mpris,
+#tray,
+#custom-claude,
+#custom-tailscale,
+#network,
+#bluetooth,
+#cpu,
+#memory,
+#custom-battery {
+  padding: 0 8px;
+}
+
+#mpris.paused,
+#custom-tailscale.off,
+#bluetooth.off,
+#bluetooth.disabled,
+#network.disconnected {
+  color: @muted;
+}
+
+#custom-claude.high,
+#custom-battery.low {
+  color: @warning;
+}
+
+#custom-battery.critical {
+  color: @critical;
+}

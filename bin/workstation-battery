@@ -1,0 +1,58 @@
+#!/bin/bash
+# The system battery as waybar JSON, or with --details as lines for workstation-battery-menu. Prints nothing on a desktop.
+set -euo pipefail
+
+battery=$(workstation-machine battery) || exit 0
+
+# USB-C PD (UCSI): voltage_now is the negotiated voltage, current_max the charger's limit at that voltage
+charger="" plugged=0
+for supply in "$(dirname "$battery")"/*; do
+  [ "$(cat "$supply/online" 2>/dev/null)" = 1 ] || continue
+  plugged=1
+  [ -r "$supply/voltage_now" ] && [ -r "$supply/current_max" ] || continue
+  charger=$(awk '{ v[NR] = $1 / 1e6 } END { printf "%.0fW %gV %gA", v[1] * v[2], v[1], v[2] }' "$supply/voltage_now" "$supply/current_max")
+  break
+done
+
+awk -F= -v mode="${1:-}" -v charger="$charger" -v plugged="$plugged" '
+  function abs(x) { return x < 0 ? -x : x }
+  function duration(hours) { return hours >= 1 ? sprintf("%.1fh", hours) : sprintf("%dm", hours * 60) }
+  { sub(/^POWER_SUPPLY_/, "", $1); v[$1] = $2 }
+  END {
+    percent = v["CAPACITY"] + 0
+    status = v["STATUS"]
+    volts = v["VOLTAGE_NOW"] / 1e6
+    # Batteries report energy (uWh, uW) or charge (uAh, uA); some report the rate negative while discharging
+    if ("ENERGY_NOW" in v) {
+      now = v["ENERGY_NOW"]; full = v["ENERGY_FULL"]; design = v["ENERGY_FULL_DESIGN"]
+      rate = "POWER_NOW" in v ? abs(v["POWER_NOW"]) : abs(v["CURRENT_NOW"]) * volts
+      watts = rate / 1e6
+    } else {
+      now = v["CHARGE_NOW"]; full = v["CHARGE_FULL"]; design = v["CHARGE_FULL_DESIGN"]
+      rate = abs(v["CURRENT_NOW"])
+      watts = rate / 1e6 * volts
+    }
+    time = ""
+    if (rate > 0 && status == "Charging") { time = duration((full - now) / rate); time_label = "Full in" }
+    if (rate > 0 && status == "Discharging") { time = duration(now / rate); time_label = "Time left" }
+
+    if (mode == "--details") {
+      if (charger != "") print "Charger     " charger
+      else if (status == "Charging") printf "Into battery %.0fW %.1fV %.2fA\n", watts, volts, (volts > 0 ? watts / volts : 0)
+      else print "Charger     " (plugged ? "connected" : "not connected")
+      printf "Battery     %d%%, %s, %.0fW\n", percent, tolower(status), watts
+      if (time != "") printf "%-11s %s\n", time_label, time
+      health = design > 0 ? sprintf("%d%%", full / design * 100 + 0.5) : "unknown"
+      cycles = v["CYCLE_COUNT"] > 0 ? ", " v["CYCLE_COUNT"] " cycles" : ""
+      print "Health      " health cycles
+      exit
+    }
+
+    split("󰁺 󰁻 󰁼 󰁽 󰁾 󰁿 󰂀 󰂁 󰂂 󰁹", icons, " ")
+    icon = status == "Charging" ? "󰂄" : icons[percent >= 100 ? 10 : int(percent / 10) + 1]
+    class = status == "Charging" ? "charging" : status != "Discharging" ? "" : percent <= 10 ? "critical" : percent <= 20 ? "low" : ""
+    text = sprintf("%s %d%% %.0fW%s", icon, percent, watts, time == "" ? "" : " " time)
+    tooltip = status (time == "" ? "" : ", " tolower(time_label) " " time)
+    printf "{\"text\":\"%s\",\"tooltip\":\"%s\",\"class\":\"%s\"}\n", text, tooltip, class
+  }
+' "$battery/uevent"

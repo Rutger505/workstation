@@ -1,0 +1,77 @@
+{
+  "layer": "top",
+  "position": "top",
+  "height": 26,
+  "modules-left": ["hyprland/workspaces"],
+  "modules-center": ["clock"],
+  "modules-right": [
+    "mpris",
+    "tray",
+    "custom/claude",
+    "custom/tailscale",
+    "network",
+    "bluetooth",
+    "cpu",
+    "memory",
+    "custom/battery"
+  ],
+
+  "clock": {
+    "format": "{:%a %d %b %H:%M}",
+    "tooltip-format": "<tt>{calendar}</tt>"
+  },
+  "mpris": {
+    "format": "{dynamic}",
+    "format-paused": "{dynamic}",
+    "dynamic-order": ["title", "artist"],
+    "dynamic-len": 40
+  },
+  "tray": {
+    "spacing": 8
+  },
+  "custom/claude": {
+    "exec": "workstation-claude-usage",
+    "return-type": "json",
+    "interval": 300
+  },
+  "custom/tailscale": {
+    "exec": "workstation-tailscale-status",
+    "return-type": "json",
+    "interval": 15
+  },
+  "network": {
+    "format-wifi": "󰖩 {signalStrength}%",
+    "format-ethernet": "󰈀",
+    "format-disconnected": "󰖪",
+    "tooltip-format-wifi": "{essid} {ipaddr}",
+    "tooltip-format-ethernet": "{ifname} {ipaddr}",
+    "on-click": "workstation-launch-or-focus --tui org.workstation.impala impala"
+  },
+  "bluetooth": {
+    "format": "󰂯",
+    "format-off": "󰂲",
+    "format-disabled": "󰂲",
+    "format-connected": "󰂱 {num_connections}",
+    "format-no-controller": "",
+    "tooltip-format-connected": "{device_enumerate}",
+    "tooltip-format-enumerate-connected": "{device_alias}",
+    "on-click": "workstation-launch-or-focus --tui org.workstation.bluetui bluetui"
+  },
+  "cpu": {
+    "format": "󰍛 {usage}%",
+    "interval": 5,
+    "on-click": "workstation-launch-or-focus --tui org.workstation.btop btop"
+  },
+  "memory": {
+    "format": "󰘚 {percentage}%",
+    "interval": 5,
+    "tooltip-format": "{used:0.1f} / {total:0.1f} GiB",
+    "on-click": "workstation-launch-or-focus --tui org.workstation.btop btop"
+  },
+  "custom/battery": {
+    "exec": "workstation-battery",
+    "return-type": "json",
+    "interval": 30,
+    "on-click": "workstation-battery-menu"
+  }
+}

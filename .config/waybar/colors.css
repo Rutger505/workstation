@@ -1,0 +1,8 @@
+/* Temporary neutral look until the theme lands; background and borders match hypr/colors.lua */
+@define-color background #1e1e1e;
+@define-color foreground #d0d0d0;
+@define-color muted #6e6e6e;
+@define-color active #9a9a9a;
+@define-color inactive #3a3a3a;
+@define-color warning #d9c27a;
+@define-color critical #e06c6c;
