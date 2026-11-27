@@ -66,7 +66,7 @@ Arch leads: if Fedora blocks a feature, no hoops; build it for Arch and add a Fe
 
 - `test/vm arch|arch-luks install|up|ssh|sync|key|type|shot|down|save|restore|reset|status` (usage at the top of the script, README).
 - Test a change: `sync` (working tree incl. uncommitted changes → guest `~/.local/share/workstation`), then `test/vm arch ssh '~/.local/share/workstation/install.sh'` (quote the `~`).
-- Snapshots: `base` (fresh archinstall), `system` (`arch`: part 2 installed and booted once), `hyprland` (`arch`: part 3), `bar` (`arch`: part 4). Delete extra ones (`qemu-img snapshot -d`), host disk is tight. UEFI vars aren't in snapshots: the `Limine` boot entry stays after `restore base`, OVMF skips it.
+- Snapshots: `base` (fresh archinstall), `system` (`arch`: part 2 installed and booted once), `hyprland` (`arch`: part 3), `lock` (`arch`: part 5). Delete extra ones (`qemu-img snapshot -d`), host disk is tight. UEFI vars aren't in snapshots: the `Limine` boot entry stays after `restore base`, OVMF skips it.
 - After part 2 Hyprland runs on tty1 via autologin (once per boot). Over ssh: `hyprctl -i 0 ...`; Lua dispatch syntax, e.g. `hyprctl -i 0 dispatch 'hl.dsp.exit()'`.
   Extra monitor: `hyprctl -i 0 output create headless NAME` / `output remove NAME` (fires the monitor events; only the first QEMU head shows in `shot`).
   Headless QEMU/KVM + OVMF; look at the screen via `shot`, kernel log in `~/.cache/workstation-vm/<distro>.serial.log` (arch-luks).
@@ -76,4 +76,4 @@ Arch leads: if Fedora blocks a feature, no hoops; build it for Arch and add a Fe
 - archinstall JSON schema changes per release: check it against the ISO's archinstall when `install` breaks.
 - Disk: each installed qcow2 ~2 GB, ISO 1.3 GB; delete what's not needed (`install` recreates).
 - Host needs `qemu-hw-display-virtio-vga` (not in qemu-base). virgl impossible without a host GPU. `test/vm fedora`: TODO.
-- Not testable in the VM: battery (scripts: fake dir via `WORKSTATION_POWER_SUPPLY`, PLAN step 2), lid, suspend, real monitors (headless outputs cover the monitor logic), real GPU → real hardware.
+- Not testable in the VM: battery (scripts: fake dir via `WORKSTATION_POWER_SUPPLY`, PLAN step 2; for user units `systemctl --user set-environment`), lid, backlight, hibernate resume (S3 suspend works: QMP `system_wakeup`), real monitors (headless outputs cover the monitor logic), real GPU → real hardware.

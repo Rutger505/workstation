@@ -3,6 +3,7 @@
 # Stow links a whole directory when it doesn't exist yet, but some programs ignore symlinked
 # directories, like systemd with drop-in directories. These get created as real directories.
 real_dirs=(
+  .config/systemd/user/hypridle.service.d
 )
 
 cd "$(dirname "$(realpath "$0")")/.." || exit 1

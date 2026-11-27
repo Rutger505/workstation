@@ -1,0 +1,15 @@
+#!/bin/bash
+# Super+Ctrl+I: keep the laptop from dimming, locking and suspending until toggled off; the desktop has no idle actions.
+# `workstation-idle-toggle status`: waybar JSON, nothing while off.
+unit=workstation-idle-inhibit
+if [ "${1:-}" = status ]; then
+  systemctl --user -q is-active "$unit" && echo '{"text": "󰅶", "tooltip": "Idle inhibited (Super+Ctrl+I)"}'
+  exit 0
+fi
+[ "$(workstation-machine)" = laptop ] || exit 0
+if systemctl --user -q is-active "$unit"; then
+  systemctl --user stop "$unit"
+else
+  systemd-run --user -q --collect --unit "$unit" systemd-inhibit --what=idle --who=workstation --why="Idle inhibit toggled by hand" sleep infinity
+fi
+pkill -RTMIN+8 waybar

@@ -121,7 +121,7 @@ Each part tested in `test/vm`, committed + pushed on its own.
 2. Done (2026-11-27): paru, snapper (weekly timeline + last 5 updates via snap-pac), limine-snapper-sync + limine-mkinitcpio-hook (cmdline in `/etc/default/limine`, no quiet/splash), zsh + `.zprofile` → uwsm → Hyprland, tty1 autologin once per boot. Tested in `arch`: snapshot boot from the menu, logout → password prompt. VM snapshot `system`. Not tested: `arch-luks`.
 3. Done (2026-11-27): own `.config/hypr/` (dwindle, binds as above, no float rules, `idle_inhibit = "fullscreen"` on all windows), uwsm env (`bin/` on PATH), ghostty + fuzzel, launch-or-focus, host files, monitor-bound workspaces + monitor popup. Tested in `arch` with headless outputs (`hyprctl output create headless`). VM snapshot `hyprland`.
 4. Done (2026-11-27): waybar, see step 2. Tested in `arch` (fake battery dir). VM snapshot `bar`.
-5. Lock, idle, power: hyprlock, hypridle (laptop), power menu, idle inhibit. Lid/hibernate only partly testable.
+5. Done (2026-11-27): hyprlock, hypridle, power menu, idle inhibit, laptop suspend-then-hibernate; see step 2. Tested in `arch` (laptop bits with the fake battery). VM snapshot `lock`. Hardware only: real lid, backlight dim, resume from hibernate into the session (VM: image written and read back at the right offset, then KVM hangs restoring devices).
 6. Menus and tools: fuzzel, mako, cliphist, emoji, screenshots, recording, webcam (fake camera), WiFi/BT/audio TUIs, own scripts replacing `omarchy-*`.
 7. Theme: Granite placeholder + JetBrainsMono NL, colors in one place.
 8. Fedora on paper: Fedora name or TODO for every package of 2-7. No Fedora test VM (Rutger: only has to be theoretically correct).
@@ -141,6 +141,7 @@ Not in the VM, Rutger on hardware: battery/charger, lid, hibernate, real webcam,
   - Why not systemd-boot: it only reads the FAT ESP, kernels live there and aren't in the btrfs snapshot. A plain `rootflags=subvol=<snapshot>` entry boots the current kernel against the snapshot's old `/usr/lib/modules` → missing modules after any kernel update. Needs a kernel + initramfs copy per snapshot on the ESP; limine-snapper-sync does exactly that, nothing maintained does it for systemd-boot.
   - ESP size: ≥ 2 GB for the per-snapshot kernel copies.
 - Session pitfall: with plain autologin a Hyprland crash while locked respawns an unlocked session, hence autologin once per boot (`/run/workstation-autologin`).
+  - Crash while locked (checked part 5): `start-hyprland` restarts Hyprland in safe mode, still locked ("lockscreen app died" screen, a new hyprlock can't take over). Unlock from another tty: `hyprctl --instance 0 eval 'hl.clear_crashed_lockscreen()'`.
 - Fonts: none installed yet; ghostty embeds its own, fuzzel gets Adwaita Sans via a dependency. JetBrainsMono NL comes with the theme (`ttf-jetbrains-mono-nerd` is 232 MB installed, mind the VM disk).
 - Done (part 3): `.config/hypr/` (`colors.lua` = the look's only colors, swap in the theme), `.config/uwsm/env`, `bin/workstation-launch-or-focus [--tui] CLASS CMD` (TUIs in ghostty with class `org.workstation.<name>`).
 - Monitors (`.config/hypr/monitors.lua`): Hyprland's Lua `monitor.added`/`removed` events instead of a socket2 daemon. Unknown monitor (not in the host file, another one already on) → `workstation-monitors ask <output>` (fuzzel: extend right/left/above, mirror, only this monitor, disable); Super+Ctrl+D = `workstation-monitors` (pick a monitor first). Order: host file order, then left to right; never disables every screen.
@@ -151,12 +152,17 @@ Not in the VM, Rutger on hardware: battery/charger, lid, hibernate, real webcam,
   - Battery: `workstation-battery` (bar JSON, `--details` for `workstation-battery-menu` = fuzzel list, also on click). Reads the battery's `uevent`: watts from `POWER_NOW` or `CURRENT_NOW`×`VOLTAGE_NOW`, time from `ENERGY_*`/`POWER_NOW` or `CHARGE_*`/`CURRENT_NOW` (absolute values, some report negative). Charger: first online supply with `voltage_now` + `current_max` (UCSI `ucsi-source-psy-*`: negotiated PD voltage + the source's current limit); otherwise while charging what goes into the battery. `/sys/class/typec` (`usb_power_delivery`) only lists the source's capabilities, not the contract: unused. TODO on the laptop: check what it exposes.
   - Claude usage: `workstation-claude-usage`, `GET https://api.anthropic.com/api/oauth/usage` with `anthropic-beta: oauth-2025-04-20` and Claude Code's token from `~/.claude/.credentials.json` (header via stdin); `five_hour`/`seven_day` `.utilization` + `.resets_at` (checked 2026-11-27). Every 5 min, cached 4 min in `$XDG_RUNTIME_DIR`. Never refreshes the token (rotating refresh tokens would log Claude Code out): expired → hidden until Claude Code runs again.
   - Tailscale: `workstation-tailscale-status` (`tailscale status --json`: `BackendState`, exit node peer), hidden without tailscale.
-  - Part 5: idle inhibit indicator goes in `modules-right` (e.g. before battery).
 - Launcher and menus: fuzzel (also power menu, monitor popup, emoji, clipboard via cliphist). Lighter than walker, no background service.
 - Notifications: mako, popups only.
-- Lock, idle, wallpaper: hyprlock, hypridle on laptop only (dim 4m30s; 5m lock + suspend; lock before sleep), logind lid switch → suspend, hyprpaper.
-  - Per-host: laptop suspend-then-hibernate (port dev-env's sleep.conf). hibernate-unlock only matters with LUKS; if ever needed, rewrite for hyprlock (its `omarchy-shell lock isLocked` and `/etc/pam.d/omarchy-lock-password` don't exist here). Desktop: no hypridle listeners at all (manual lock only).
-  - Idle inhibit: Hyprland `idleinhibit fullscreen` window rule + Super+Ctrl+I toggle with a bar indicator.
+- Done (part 5): lock and idle.
+  - hyprlock (`.config/hypr/hyprlock.conf`, own colors at the top mirroring `colors.lua`), PAM `/etc/pam.d/hyprlock` from the package (includes `login`).
+  - hypridle: one user unit on both machines; drop-in `hypridle.service.d/machine.conf` (real dir via `workstation-stow`: systemd ignores symlinked drop-in dirs) starts `hypridle-laptop.conf` (sources `hypridle.conf` + dim 270s, lock + suspend-then-hibernate 300s) on a laptop, else plain `hypridle.conf` (lock before sleep only, `inhibit_sleep = 3` waits for the lock; logs "No rules configured", harmless).
+  - Idle inhibit: fullscreen window rule + `workstation-idle-toggle` (transient user unit `workstation-idle-inhibit` holding `systemd-inhibit --what=idle`, hypridle honors it; no-op on desktop), bar `custom/idle` (signal 8) only while on.
+  - `workstation-power-menu`: Lock (`loginctl lock-session`), Suspend (laptop: suspend-then-hibernate), Reboot, Shutdown, Logout (`uwsm stop`).
+  - Laptop (`install/hibernate.sh`): logind lid → suspend-then-hibernate, `HibernateDelaySec=30min`, `HibernateOnACPower=no` (Omarchy's old values), swapfile `/swap/swapfile` = RAM size in subvolume `/swap` (nested in `@`, so not in snapshots), fstab. `install/limine.arch.sh` adds `resume=UUID= resume_offset=` (+ `rtc_cmos.use_acpi_alarm=1` on s2idle) as a `KERNEL_CMDLINE[default]+=` line in `/etc/default/limine` (read after `limine-entry-tool.d`) and the `resume` hook (udev initramfs; systemd initramfs resumes by itself). Snapshot boot entries have no resume args.
+  - Not ported from dev-env: pm_freeze_timeout/image_size, btusb sleep hook (add on the laptop if hibernate aborts or BT hangs).
+  - TODO on the laptop: lid, dim (backlight via brightnessctl), suspend-then-hibernate cycle, hibernate resume.
+- Wallpaper: hyprpaper.
 - Monitor popup memory: `~/.local/state/workstation/monitors`, one `<choice> <description>` line per monitor (description = make model serial; outputs without one, like headless, by name), reapplied silently on reconnect.
 - Screenshots and recording: grim, slurp, satty, gpu-screen-recorder.
 - Webcam photo (Super+Ctrl+C): ffmpeg grabs one frame from v4l2 (skip first ~10 frames so auto-exposure settles, ~0.5-1s), saves to ~/Pictures/Webcam/<timestamp>.jpg, copies it to the clipboard (wl-copy) and opens it in imv. No shutter sound or flash. Desktop: only if a webcam is connected, else notify "no camera". Test in VM with a fake v4l2loopback device.
@@ -175,6 +181,7 @@ Not in the VM, Rutger on hardware: battery/charger, lid, hibernate, real webcam,
 - `install/login.sh` should work as is (agetty via PATH, zsh at /usr/bin/zsh).
 - Part 4: `waybar` same name (ships `waybar.service`, Fedora patches its target conflicts; built with playerctl for mpris).
 - Part 3 packages: same names in `packages.lst` (fuzzel, wl-clipboard, brightnessctl, playerctl, pipewire, wireplumber, btop, jq); ghostty from COPR `scottames/ghostty` (in `fedora.sh`), `pipewire-pulseaudio` instead of `pipewire-pulse`.
+- Part 5: hyprlock, hypridle not in Fedora: COPR solopasha/hyprland (in `packages.arch.lst` for now). TODO: resume on Fedora (dracut `resume` module, `resume=`/`resume_offset=` via grubby); `install/hibernate.sh` itself is distro-neutral.
 - TODOs for features blocked on Fedora go here.
 
 ## 4. Port from dev-env

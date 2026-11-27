@@ -44,6 +44,7 @@ window#waybar {
 #bluetooth,
 #cpu,
 #memory,
+#custom-idle,
 #custom-battery {
   padding: 0 8px;
 }
@@ -56,6 +57,7 @@ window#waybar {
   color: @muted;
 }
 
+#custom-idle,
 #custom-claude.high,
 #custom-battery.low {
   color: @warning;

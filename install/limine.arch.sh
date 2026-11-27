@@ -23,6 +23,21 @@ if ! grep -Eq "^HOOKS=.*[( ]${hook}[ )]" /etc/mkinitcpio.conf; then
   sudo sed -i -E "/^HOOKS=/ s/([( ])filesystems([ )])/\1filesystems $hook\2/" /etc/mkinitcpio.conf
 fi
 
+# Laptop: resume from hibernate.sh's swapfile. /etc/default/limine is read after limine-entry-tool.d, so the args go here.
+if [ -f /swap/swapfile ]; then
+  resume="resume=UUID=$(findmnt -no UUID -T /swap/swapfile) resume_offset=$(sudo btrfs inspect-internal map-swapfile -r /swap/swapfile)"
+  # suspend-then-hibernate needs an RTC wakeup from s2idle to hibernate on time
+  if grep -q '\[s2idle\]' /sys/power/mem_sleep; then
+    resume+=" rtc_cmos.use_acpi_alarm=1"
+  fi
+  sudo sed -i '/^KERNEL_CMDLINE\[default\]+=" resume=/d' /etc/default/limine
+  echo "KERNEL_CMDLINE[default]+=\" $resume\"" | sudo tee -a /etc/default/limine >/dev/null
+  # The systemd hook resumes by itself
+  if [ "$hook" = btrfs-overlayfs ] && ! grep -Eq '^HOOKS=.*[( ]resume[ )]' /etc/mkinitcpio.conf; then
+    sudo sed -i -E '/^HOOKS=/ s/([( ])filesystems([ )])/\1resume filesystems\2/' /etc/mkinitcpio.conf
+  fi
+fi
+
 sudo limine-update
 
 # Limine prefers a limine.conf next to its EFI binary (archinstall's) over the generated /boot/limine.conf

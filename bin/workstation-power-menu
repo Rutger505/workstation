@@ -1,0 +1,16 @@
+#!/bin/bash
+# Super+Esc: Lock is first, so Super+Esc, Enter locks
+choice=$(printf '%s\n' Lock Suspend Reboot Shutdown Logout | fuzzel --dmenu --prompt "Power: " --lines 5 --width 20) || exit 0
+case $choice in
+  Lock) loginctl lock-session ;;
+  Suspend)
+    if [ "$(workstation-machine)" = laptop ]; then
+      systemctl suspend-then-hibernate
+    else
+      systemctl suspend
+    fi
+    ;;
+  Reboot) systemctl reboot ;;
+  Shutdown) systemctl poweroff ;;
+  Logout) uwsm stop ;;
+esac
