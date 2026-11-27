@@ -1,13 +1,18 @@
 # Arch-only names (repo, chaotic-aur, AUR).
+bluetui
 ghostty
+gpu-screen-recorder
 hypridle
 hyprland
 hyprlock
 hyprpolkitagent
+impala
 inotify-tools
 limine-mkinitcpio-hook
 limine-snapper-sync
+noto-fonts-emoji
 pipewire-pulse
+satty
 snap-pac
 uwsm
 xdg-desktop-portal-hyprland

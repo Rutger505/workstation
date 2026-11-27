@@ -121,12 +121,12 @@ Each part tested in `test/vm`, committed + pushed on its own.
 2. Done (2026-11-27): paru, snapper (weekly timeline + last 5 updates via snap-pac), limine-snapper-sync + limine-mkinitcpio-hook (cmdline in `/etc/default/limine`, no quiet/splash), zsh + `.zprofile` → uwsm → Hyprland, tty1 autologin once per boot. Tested in `arch`: snapshot boot from the menu, logout → password prompt. VM snapshot `system`. Not tested: `arch-luks`.
 3. Done (2026-11-27): own `.config/hypr/` (dwindle, binds as above, no float rules, `idle_inhibit = "fullscreen"` on all windows), uwsm env (`bin/` on PATH), ghostty + fuzzel, launch-or-focus, host files, monitor-bound workspaces + monitor popup. Tested in `arch` with headless outputs (`hyprctl output create headless`). VM snapshot `hyprland`.
 4. Done (2026-11-27): waybar, see step 2. Tested in `arch` (fake battery dir). VM snapshot `bar`.
-5. Done (2026-11-27): hyprlock, hypridle, power menu, idle inhibit, laptop suspend-then-hibernate; see step 2. Tested in `arch` (laptop bits with the fake battery). VM snapshot `lock`. Hardware only: real lid, backlight dim, resume from hibernate into the session (VM: image written and read back at the right offset, then KVM hangs restoring devices).
-6. Menus and tools: fuzzel, mako, cliphist, emoji, screenshots, recording, webcam (fake camera), WiFi/BT/audio TUIs, own scripts replacing `omarchy-*`.
+5. Done (2026-11-27): hyprlock, hypridle, power menu, idle inhibit, laptop suspend-then-hibernate; see step 2. Tested in `arch` (laptop bits with the fake battery). VM snapshot `lock` (replaced by `tools`). Hardware only: real lid, backlight dim, resume from hibernate into the session (VM: image written and read back at the right offset, then KVM hangs restoring devices).
+6. Done (2026-11-27): mako, clipboard history, emoji picker, screenshots, recording, webcam photo, cheat sheet, iwd + bluez + TUIs; see step 2. Tested in `arch`. VM snapshot `tools`. Hardware only: recording (gsr refuses llvmpipe; stop/notify logic tested with a fake gsr), webcam capture (no camera in QEMU; no-camera notification tested, capture pipeline with ffmpeg `testsrc`), WiFi and bluetooth (no adapters: impala says "No adapter found", bluetui exits).
 7. Theme: Granite placeholder + JetBrainsMono NL, colors in one place.
 8. Fedora on paper: Fedora name or TODO for every package of 2-7. No Fedora test VM (Rutger: only has to be theoretically correct).
 
-Not in the VM, Rutger on hardware: battery/charger, lid, hibernate, real webcam, real monitors, GPU performance.
+Not in the VM, Rutger on hardware: battery/charger, lid, hibernate, real webcam, screen recording, WiFi, bluetooth, real monitors, GPU performance.
 
 ## 1. Test machines
 
@@ -142,18 +142,26 @@ Not in the VM, Rutger on hardware: battery/charger, lid, hibernate, real webcam,
   - ESP size: ≥ 2 GB for the per-snapshot kernel copies.
 - Session pitfall: with plain autologin a Hyprland crash while locked respawns an unlocked session, hence autologin once per boot (`/run/workstation-autologin`).
   - Crash while locked (checked part 5): `start-hyprland` restarts Hyprland in safe mode, still locked ("lockscreen app died" screen, a new hyprlock can't take over). Unlock from another tty: `hyprctl --instance 0 eval 'hl.clear_crashed_lockscreen()'`.
-- Fonts: none installed yet; ghostty embeds its own, fuzzel gets Adwaita Sans via a dependency. JetBrainsMono NL comes with the theme (`ttf-jetbrains-mono-nerd` is 232 MB installed, mind the VM disk).
+- Fonts: only `noto-fonts-emoji` (part 6) so far; ghostty embeds its own, fuzzel gets Adwaita Sans via a dependency. JetBrainsMono NL comes with the theme (`ttf-jetbrains-mono-nerd` is 232 MB installed, mind the VM disk).
 - Done (part 3): `.config/hypr/` (`colors.lua` = the look's only colors, swap in the theme), `.config/uwsm/env`, `bin/workstation-launch-or-focus [--tui] CLASS CMD` (TUIs in ghostty with class `org.workstation.<name>`).
 - Monitors (`.config/hypr/monitors.lua`): Hyprland's Lua `monitor.added`/`removed` events instead of a socket2 daemon. Unknown monitor (not in the host file, another one already on) → `workstation-monitors ask <output>` (fuzzel: extend right/left/above, mirror, only this monitor, disable); Super+Ctrl+D = `workstation-monitors` (pick a monitor first). Order: host file order, then left to right; never disables every screen.
 - Host files: `.config/hypr/hosts/<hostname>.lua` call `require("monitors").set({...})` with the monitors in order. Names `rutger-desktop` / `rutger-laptop` (dev-env: `rutger-*-omarchy`): set that hostname at install. TODO: real modes/positions/scales from dev-env's untracked `monitors.lua` on each machine; desktop order assumed DP-1, DP-2, HDMI-A-1 (left to right).
 - Machine type: `workstation-machine` prints `laptop` (a power supply of type Battery without scope Device) or `desktop`. Idle and bar use it; `workstation-machine battery` prints the battery's sysfs dir. QEMU 11 has no battery device: test with a fake dir (`BAT0/{type,scope,uevent}`, charger `ucsi-source-psy-*/{online,voltage_now,current_max}`) via `WORKSTATION_POWER_SUPPLY=<dir>` (also `systemctl --user set-environment` + restart waybar).
-- Bound to scripts later parts must provide (exact names): `workstation-power-menu` (Super+Esc), `workstation-cheatsheet` (Super+F1, binds carry descriptions: `hyprctl binds`), `workstation-idle-toggle` (Super+Ctrl+I), `workstation-battery-menu` (Super+Ctrl+P), `workstation-screenshot` (Super+Ctrl+S, Print), `workstation-record` (Super+Ctrl+R), `workstation-clipboard` (Super+Ctrl+V), `workstation-emoji` (Super+Ctrl+E), `workstation-webcam` (Super+Ctrl+C). Packages still missing for binds: zen-browser, yazi, discord, spotatui, bitwarden (`bitwarden-desktop`), steam, impala, bluetui, wiremix, ydotool (Super+V), gpu-screen-recorder-ui + gsr-clip-share (Super+C), useful-autoclicker (Alt+F6).
+- Bound to scripts later parts must provide (exact names): `workstation-power-menu` (Super+Esc), `workstation-cheatsheet` (Super+F1, binds carry descriptions: `hyprctl binds`), `workstation-idle-toggle` (Super+Ctrl+I), `workstation-battery-menu` (Super+Ctrl+P), `workstation-screenshot` (Super+Ctrl+S, Print), `workstation-record` (Super+Ctrl+R), `workstation-clipboard` (Super+Ctrl+V), `workstation-emoji` (Super+Ctrl+E), `workstation-webcam` (Super+Ctrl+C). Packages still missing for binds (dev-env port): zen-browser, yazi, discord, spotatui, bitwarden (`bitwarden-desktop`), steam, ydotool (Super+V), gpu-screen-recorder-ui + gsr-clip-share (Super+C), useful-autoclicker (Alt+F6).
 - Done (part 4): waybar via its own user unit (`install/waybar.sh` enables it, `graphical-session.target` from uwsm), `.config/waybar/` (`colors.css` = the bar's only colors, mirrors `colors.lua`; font JetBrainsMono NL Nerd Font, icons show as boxes until it's installed). Clock `%a %d %b %H:%M` (waybar's fmt has no `%-d`: `08`, `%e` gives a double space). Bluetooth hides itself without a controller, mpris without a player. waybar RSS ~48 MB.
   - Battery: `workstation-battery` (bar JSON, `--details` for `workstation-battery-menu` = fuzzel list, also on click). Reads the battery's `uevent`: watts from `POWER_NOW` or `CURRENT_NOW`×`VOLTAGE_NOW`, time from `ENERGY_*`/`POWER_NOW` or `CHARGE_*`/`CURRENT_NOW` (absolute values, some report negative). Charger: first online supply with `voltage_now` + `current_max` (UCSI `ucsi-source-psy-*`: negotiated PD voltage + the source's current limit); otherwise while charging what goes into the battery. `/sys/class/typec` (`usb_power_delivery`) only lists the source's capabilities, not the contract: unused. TODO on the laptop: check what it exposes.
   - Claude usage: `workstation-claude-usage`, `GET https://api.anthropic.com/api/oauth/usage` with `anthropic-beta: oauth-2025-04-20` and Claude Code's token from `~/.claude/.credentials.json` (header via stdin); `five_hour`/`seven_day` `.utilization` + `.resets_at` (checked 2026-11-27). Every 5 min, cached 4 min in `$XDG_RUNTIME_DIR`. Never refreshes the token (rotating refresh tokens would log Claude Code out): expired → hidden until Claude Code runs again.
   - Tailscale: `workstation-tailscale-status` (`tailscale status --json`: `BackendState`, exit node peer), hidden without tailscale.
 - Launcher and menus: fuzzel (also power menu, monitor popup, emoji, clipboard via cliphist). Lighter than walker, no background service.
-- Notifications: mako, popups only.
+- Done (part 6): menus and tools.
+  - Notifications: mako (`.config/mako/config`, own colors at the top mirroring `colors.lua`), started by D-Bus activation (the package's `fr.emersion.mako.service` → `mako.service`), no enable needed.
+  - `workstation-clipboard`: cliphist list in fuzzel → `wl-copy`. Store watcher: own user unit `cliphist.service` (Fedora's package ships none) on `graphical-session.target`, enabled by `install/clipboard.sh`.
+  - `workstation-emoji`: `/usr/share/unicode/emoji/emoji-test.txt` (`unicode-emoji`, 1 MB, same name on Fedora), fully-qualified only, copies (no typing: ydotool can't type non-ASCII). Color emoji font `noto-fonts-emoji`.
+  - `workstation-screenshot`: slurp → grim → satty; Enter = copy + save to `~/Pictures/Screenshots` + close.
+  - `workstation-record`: slurp (`-o`: click an output for all of it) → gpu-screen-recorder in transient user unit `workstation-record` (KillSignal=SIGINT; the GSR replay also runs gpu-screen-recorder, so no pkill), desktop audio, `~/Videos`; `ExecStopPost` notifies saved/failed. TODO on hardware: a real recording; maybe a bar indicator while recording.
+  - `workstation-webcam`: first `/sys/class/video4linux/*` with index 0, largest MJPEG size (else the camera's current mode), drops 10 frames, `~/Pictures/Webcam/<timestamp>.jpg`, `wl-copy -t image/jpeg`, imv. TODO on the laptop: size detection, exposure after 10 frames.
+  - `workstation-cheatsheet`: `hyprctl -j binds` → `SUPER CTRL W   WiFi` in fuzzel.
+  - Network: iwd only authenticates (`EnableNetworkConfiguration` off, its default); systemd-networkd + resolved from the base install (archinstall's ISO network config: `20-ethernet/wlan/wwan.network`) do DHCP on every link. `install/network.sh` enables iwd + bluetooth. TUIs impala, bluetui, wiremix (bar clicks open the same).
 - Done (part 5): lock and idle.
   - hyprlock (`.config/hypr/hyprlock.conf`, own colors at the top mirroring `colors.lua`), PAM `/etc/pam.d/hyprlock` from the package (includes `login`).
   - hypridle: one user unit on both machines; drop-in `hypridle.service.d/machine.conf` (real dir via `workstation-stow`: systemd ignores symlinked drop-in dirs) starts `hypridle-laptop.conf` (sources `hypridle.conf` + dim 270s, lock + suspend-then-hibernate 300s) on a laptop, else plain `hypridle.conf` (lock before sleep only, `inhibit_sleep = 3` waits for the lock; logs "No rules configured", harmless).
@@ -164,11 +172,7 @@ Not in the VM, Rutger on hardware: battery/charger, lid, hibernate, real webcam,
   - TODO on the laptop: lid, dim (backlight via brightnessctl), suspend-then-hibernate cycle, hibernate resume.
 - Wallpaper: hyprpaper.
 - Monitor popup memory: `~/.local/state/workstation/monitors`, one `<choice> <description>` line per monitor (description = make model serial; outputs without one, like headless, by name), reapplied silently on reconnect.
-- Screenshots and recording: grim, slurp, satty, gpu-screen-recorder.
-- Webcam photo (Super+Ctrl+C): ffmpeg grabs one frame from v4l2 (skip first ~10 frames so auto-exposure settles, ~0.5-1s), saves to ~/Pictures/Webcam/<timestamp>.jpg, copies it to the clipboard (wl-copy) and opens it in imv. No shutter sound or flash. Desktop: only if a webcam is connected, else notify "no camera". Test in VM with a fake v4l2loopback device.
-- Audio, bluetooth, network: pipewire + wireplumber + wiremix, bluez + bluetui, NetworkManager or iwd + impala.
 - Theming: Granite palette, JetBrainsMono NL Nerd Font, cursor, GTK/Qt dark mode. No theme switcher.
-- Own scripts for the `omarchy-*` commands dev-env calls: lock, shutdown, webapp install, tzupdate, Tailscale service.
 
 ## 3. Fedora specifics
 
@@ -182,6 +186,8 @@ Not in the VM, Rutger on hardware: battery/charger, lid, hibernate, real webcam,
 - Part 4: `waybar` same name (ships `waybar.service`, Fedora patches its target conflicts; built with playerctl for mpris).
 - Part 3 packages: same names in `packages.lst` (fuzzel, wl-clipboard, brightnessctl, playerctl, pipewire, wireplumber, btop, jq); ghostty from COPR `scottames/ghostty` (in `fedora.sh`), `pipewire-pulseaudio` instead of `pipewire-pulse`.
 - Part 5: hyprlock, hypridle not in Fedora: COPR solopasha/hyprland (in `packages.arch.lst` for now). TODO: resume on Fedora (dracut `resume` module, `resume=`/`resume_offset=` via grubby); `install/hibernate.sh` itself is distro-neutral.
+- Part 6: same names in `packages.lst` (mako, libnotify, cliphist, unicode-emoji, grim, slurp, imv, iwd, bluez, wiremix; `ffmpeg` from RPM Fusion: `dnf swap ffmpeg-free ffmpeg --allowerasing` first, Fedora ships ffmpeg-free); `google-noto-color-emoji-fonts`. Not in Fedora (checked 2026-11-27): satty (COPR solopasha/hyprland), gpu-screen-recorder (COPR brycensranch/gpu-screen-recorder-git), impala, bluetui (no maintained COPR: `cargo install` script or build); in `packages.arch.lst` for now.
+- TODO: network. Fedora runs NetworkManager; impala needs iwd. Disable NetworkManager, enable systemd-networkd + resolved (`systemd-networkd` package) with `.network` files like archinstall's, then iwd as on Arch.
 - TODOs for features blocked on Fedora go here.
 
 ## 4. Port from dev-env
@@ -189,6 +195,7 @@ Not in the VM, Rutger on hardware: battery/charger, lid, hibernate, real webcam,
 - Shell, tmux, nvim, git, ghostty, starship, lazygit, yazi configs: copy as-is, they barely depend on Omarchy (recolor to Granite).
 - hypr bindings, input, looknfeel, host files, application rules: rewrite against our own base.
 - Install scripts and optional groups: port one by one, split per distro where needed.
+- Own scripts for the remaining `omarchy-*` commands dev-env calls: webapp install, tzupdate, Tailscale service.
 - Self-update timer (`workstation-update-self`) once a machine runs from a live checkout.
 
 ## 5. Decide

@@ -1,12 +1,23 @@
 # Same package name on Arch and Fedora. Distro-specific names go in packages.<distro>.lst.
+bluez
 brightnessctl
 btop
+cliphist
+ffmpeg
 fuzzel
+grim
+imv
+iwd
 jq
+libnotify
+mako
 pipewire
 playerctl
+slurp
 snapper
+unicode-emoji
 waybar
+wiremix
 wireplumber
 wl-clipboard
 zsh

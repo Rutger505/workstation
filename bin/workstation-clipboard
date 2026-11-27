@@ -1,0 +1,6 @@
+#!/bin/bash
+# Super+Ctrl+V: pick from the cliphist history and copy it again
+set -euo pipefail
+
+choice=$(cliphist list | fuzzel --dmenu --prompt "Clipboard: " --with-nth 2) || exit 0
+cliphist decode <<<"$choice" | wl-copy

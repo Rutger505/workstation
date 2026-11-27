@@ -1,0 +1,15 @@
+# Temporary neutral look until the theme lands; the only notification colors, mirror hypr/colors.lua
+background-color=#1e1e1e
+text-color=#d0d0d0
+border-color=#9a9a9a
+progress-color=over #3a3a3a
+
+font=JetBrainsMono NL Nerd Font 11
+border-size=2
+padding=10
+margin=10
+width=360
+default-timeout=5000
+
+[urgency=critical]
+border-color=#e06c6c

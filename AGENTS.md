@@ -41,7 +41,7 @@ Arch leads: if Fedora blocks a feature, no hoops; build it for Arch and add a Fe
 - `install/*.sh`: setup steps, run alphabetically after the packages are installed.
 - `system/`: files for outside `$HOME` (mirrors `/`), copied as root by `install.sh`; removing one here doesn't remove it from machines. Files that need the user or machine (getty autologin, kernel cmdline) are written by their install script instead.
 - `bin/`: on `PATH` (via `.config/uwsm/env`), not stowed. Scripts are named `workstation-<thing>`.
-- `.config/hypr/`: Lua config; per-machine bits in `hosts/<hostname>.lua` (loaded if present), monitors and monitor-bound workspaces in `monitors.lua`, colors only in `colors.lua` (waybar: `.config/waybar/colors.css`).
+- `.config/hypr/`: Lua config; per-machine bits in `hosts/<hostname>.lua` (loaded if present), monitors and monitor-bound workspaces in `monitors.lua`, colors only in `colors.lua` (waybar: `.config/waybar/colors.css`; hyprlock, mako: top of their config).
 - `test/vm`: headless test VM (QEMU/KVM + OVMF, Hyprland on llvmpipe), see README; `test/archinstall/`: its archinstall config.
 - Everything else (`.config/`, `.claude/`, `.ssh/`) is stowed into `$HOME`.
   `.stow-local-ignore` lists what isn't.
@@ -66,7 +66,7 @@ Arch leads: if Fedora blocks a feature, no hoops; build it for Arch and add a Fe
 
 - `test/vm arch|arch-luks install|up|ssh|sync|key|type|shot|down|save|restore|reset|status` (usage at the top of the script, README).
 - Test a change: `sync` (working tree incl. uncommitted changes → guest `~/.local/share/workstation`), then `test/vm arch ssh '~/.local/share/workstation/install.sh'` (quote the `~`).
-- Snapshots: `base` (fresh archinstall), `system` (`arch`: part 2 installed and booted once), `hyprland` (`arch`: part 3), `lock` (`arch`: part 5). Delete extra ones (`qemu-img snapshot -d`), host disk is tight. UEFI vars aren't in snapshots: the `Limine` boot entry stays after `restore base`, OVMF skips it.
+- Snapshots: `base` (fresh archinstall), `system` (`arch`: part 2 installed and booted once), `hyprland` (`arch`: part 3), `tools` (`arch`: part 6). Delete extra ones (`qemu-img snapshot -d`), host disk is tight. UEFI vars aren't in snapshots: the `Limine` boot entry stays after `restore base`, OVMF skips it.
 - After part 2 Hyprland runs on tty1 via autologin (once per boot). Over ssh: `hyprctl -i 0 ...`; Lua dispatch syntax, e.g. `hyprctl -i 0 dispatch 'hl.dsp.exit()'`.
   Extra monitor: `hyprctl -i 0 output create headless NAME` / `output remove NAME` (fires the monitor events; only the first QEMU head shows in `shot`).
   Headless QEMU/KVM + OVMF; look at the screen via `shot`, kernel log in `~/.cache/workstation-vm/<distro>.serial.log` (arch-luks).

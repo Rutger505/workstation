@@ -1,0 +1,32 @@
+#!/bin/bash
+# Super+Ctrl+C: photo without preview, shutter sound or flash; the first frames are dropped so auto-exposure settles
+set -euo pipefail
+shopt -s nullglob
+
+camera=
+for node in /sys/class/video4linux/video*; do
+  # Index 0 is a camera's capture node, the others are metadata
+  if [ "$(cat "$node/index")" = 0 ]; then
+    camera=/dev/${node##*/}
+    break
+  fi
+done
+if [ -z "$camera" ]; then
+  notify-send "Webcam" "No camera"
+  exit 0
+fi
+
+# v4l2 defaults to the camera's current mode, often 640x480: ask for its largest MJPEG size (listing exits non-zero)
+formats=$(ffmpeg -hide_banner -f v4l2 -list_formats compressed -i "$camera" 2>&1 || true)
+size=$(sed -n 's/.*mjpeg *: *Motion-JPEG *: *//p' <<<"$formats" | tr ' ' '\n' | sort -t x -n -k1,1 -k2,2 | tail -n 1)
+input=(-f v4l2)
+if [ -n "$size" ]; then
+  input+=(-input_format mjpeg -video_size "$size")
+fi
+
+dir=$HOME/Pictures/Webcam
+mkdir -p "$dir"
+file=$dir/$(date +%Y-%m-%d_%H-%M-%S).jpg
+ffmpeg -hide_banner -loglevel error "${input[@]}" -i "$camera" -vf 'select=gte(n\,10)' -frames:v 1 -q:v 2 "$file"
+wl-copy --type image/jpeg <"$file"
+exec uwsm app -- imv "$file"

@@ -1,0 +1,13 @@
+# Own unit: Fedora's cliphist ships none
+[Unit]
+Description=Clipboard history (cliphist)
+PartOf=graphical-session.target
+After=graphical-session.target
+Requisite=graphical-session.target
+
+[Service]
+ExecStart=wl-paste --watch cliphist store
+Restart=on-failure
+
+[Install]
+WantedBy=graphical-session.target

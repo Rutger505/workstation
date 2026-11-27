@@ -1,0 +1,27 @@
+#!/bin/bash
+# Super+Ctrl+R: record a region (click an output for all of it), again to stop.
+# A unit of its own: the GSR replay also runs gpu-screen-recorder, so no pkill.
+set -euo pipefail
+
+unit=workstation-record
+
+if [ "${1:-}" = --stopped ]; then
+  # The unit's ExecStopPost; gsr finishes the file on SIGINT and exits cleanly
+  if [ "$SERVICE_RESULT" = success ]; then
+    notify-send "Recording saved" "$2"
+  else
+    notify-send -u critical "Recording failed" "journalctl --user -u $unit"
+  fi
+  exit
+fi
+
+if systemctl --user -q is-active "$unit"; then
+  systemctl --user stop "$unit"
+  exit
+fi
+
+region=$(slurp -o -f '%wx%h+%x+%y') || exit 0
+mkdir -p "$HOME/Videos"
+file=$HOME/Videos/recording-$(date +%Y-%m-%d_%H-%M-%S).mp4
+systemd-run --user --quiet --collect --unit "$unit" -p KillSignal=SIGINT -p "ExecStopPost=\"$0\" --stopped \"$file\"" \
+  gpu-screen-recorder -w "$region" -f 60 -a default_output -fallback-cpu-encoding yes -o "$file"

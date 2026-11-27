@@ -1,0 +1,10 @@
+#!/bin/bash
+# Super+F1: every bind with its description
+set -euo pipefail
+
+hyprctl -j binds | jq -r '.[] | .description as $description | [
+    ([[64, "SUPER"], [1, "SHIFT"], [4, "CTRL"], [8, "ALT"]][] as [$bit, $name] | select(.modmask / $bit | floor % 2 == 1) | $name),
+    ({"mouse:272": "LMB", "mouse:273": "RMB"}[.key] // .key)
+  ] | "\(join(" "))\t\($description)"' |
+  column -t -s $'\t' |
+  fuzzel --dmenu --prompt "Keys: " --width 60 --lines 20 >/dev/null || exit 0

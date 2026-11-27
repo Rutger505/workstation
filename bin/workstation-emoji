@@ -1,0 +1,7 @@
+#!/bin/bash
+# Super+Ctrl+E: emoji from Unicode's list into the clipboard
+set -euo pipefail
+
+choice=$(sed -n 's/^[^#]*; fully-qualified *# \([^ ]*\) E[0-9.]* /\1 /p' /usr/share/unicode/emoji/emoji-test.txt |
+  fuzzel --dmenu --prompt "Emoji: ") || exit 0
+wl-copy --trim-newline "${choice%% *}"
