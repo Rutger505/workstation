@@ -1,0 +1,22 @@
+#!/bin/bash
+# workstation-launch-or-focus [--tui] CLASS COMMAND...: focus the window whose class matches the regex CLASS, else start COMMAND.
+# --tui runs COMMAND in ghostty with CLASS as its class.
+set -euo pipefail
+
+tui=false
+if [ "$1" = --tui ]; then
+  tui=true
+  shift
+fi
+class=$1
+shift
+
+address=$(hyprctl -j clients | jq -r --arg class "$class" 'first(.[] | select(.class | test("^(" + $class + ")$")) | .address) // empty')
+
+if [ -n "$address" ]; then
+  hyprctl dispatch "hl.dsp.focus({ window = \"address:$address\" })" >/dev/null
+elif $tui; then
+  exec uwsm app -- ghostty --class="$class" -e "$@"
+else
+  exec uwsm app -- "$@"
+fi

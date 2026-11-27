@@ -1,0 +1,50 @@
+#!/bin/bash
+# workstation-monitors [ask OUTPUT]: choose what a monitor does (extend, mirror, only this one, disable).
+# Without OUTPUT a connected monitor is picked first (Super+Ctrl+D). Hyprland runs "ask" for unknown monitors.
+# The choice is saved per monitor in the state file that ~/.config/hypr/monitors.lua reads.
+set -euo pipefail
+
+state=${XDG_STATE_HOME:-$HOME/.local/state}/workstation/monitors
+mkdir -p "$(dirname "$state")"
+touch "$state"
+
+# Monitors that arrive together get their menus one after the other
+exec 9>"$XDG_RUNTIME_DIR/workstation-monitors.lock"
+flock 9
+
+monitors=$(hyprctl -j monitors all)
+
+if [ "${1:-}" = ask ]; then
+  output=$2
+else
+  output=$(jq -r '.[] | "\(.name)  \(.description)"' <<<"$monitors" | fuzzel --dmenu --prompt "Monitor: " | awk '{print $1}')
+fi
+[ -n "$output" ] || exit 0
+
+key=$(jq -r --arg name "$output" '.[] | select(.name == $name) | if .description == "" then .name else .description end' <<<"$monitors")
+[ -n "$key" ] || exit 0
+
+saved() { awk -v key="$key" 'substr($0, index($0, " ") + 1) == key' "$state"; }
+if [ "${1:-}" = ask ] && [ -n "$(saved)" ]; then
+  exit 0
+fi
+
+choice=$(printf '%s\n' "Extend right" "Extend left" "Extend above" "Mirror" "Only this monitor" "Disable" |
+  fuzzel --dmenu --prompt "$output: " || true)
+case $choice in
+  "Extend right") choice=right ;;
+  "Extend left") choice=left ;;
+  "Extend above") choice=above ;;
+  "Mirror") choice=mirror ;;
+  "Only this monitor") choice=only ;;
+  "Disable") choice=disable ;;
+  *) exit 0 ;;
+esac
+
+{
+  awk -v key="$key" 'substr($0, index($0, " ") + 1) != key' "$state"
+  echo "$choice $key"
+} >"$state.new"
+mv "$state.new" "$state"
+
+hyprctl eval 'require("monitors").apply()' >/dev/null

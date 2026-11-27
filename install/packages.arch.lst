@@ -1,9 +1,11 @@
 # Arch-only names (repo, chaotic-aur, AUR).
+ghostty
 hyprland
 hyprpolkitagent
 inotify-tools
 limine-mkinitcpio-hook
 limine-snapper-sync
+pipewire-pulse
 snap-pac
 uwsm
 xdg-desktop-portal-hyprland

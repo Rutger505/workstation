@@ -119,7 +119,7 @@ Each part tested in `test/vm`, committed + pushed on its own.
 
 1. Done (2026-11-27): `test/vm <distro> install` boots the latest ISO under OVMF, archinstall 4.5 with `test/archinstall/` (btrfs @/@home/@log/@pkg zstd, Limine, ESP 2 GiB at /boot, user arch, systemd-networkd from the ISO), snapshot `base`. Variants `arch` (no LUKS, like the desktop) and `arch-luks` (encrypt hook, passphrase typed over QMP).
 2. Done (2026-11-27): paru, snapper (weekly timeline + last 5 updates via snap-pac), limine-snapper-sync + limine-mkinitcpio-hook (cmdline in `/etc/default/limine`, no quiet/splash), zsh + `.zprofile` → uwsm → Hyprland, tty1 autologin once per boot. Tested in `arch`: snapshot boot from the menu, logout → password prompt. VM snapshot `system`. Not tested: `arch-luks`.
-3. Hyprland core: `hyprland.lua`, keybindings, tiling rules, monitor-bound workspaces, monitor popup (test with a second QEMU head), host files by hostname.
+3. Done (2026-11-27): own `.config/hypr/` (dwindle, binds as above, no float rules, `idle_inhibit = "fullscreen"` on all windows), uwsm env (`bin/` on PATH), ghostty + fuzzel, launch-or-focus, host files, monitor-bound workspaces + monitor popup. Tested in `arch` with headless outputs (`hyprctl output create headless`). VM snapshot `hyprland`.
 4. Bar: waybar with all modules.
 5. Lock, idle, power: hyprlock, hypridle (laptop), power menu, idle inhibit. Lid/hibernate only partly testable.
 6. Menus and tools: fuzzel, mako, cliphist, emoji, screenshots, recording, webcam (fake camera), battery menu (fake QEMU battery), WiFi/BT/audio TUIs, own scripts replacing `omarchy-*`.
@@ -141,21 +141,24 @@ Not in the VM, Rutger on hardware: battery/charger, lid, hibernate, real webcam,
   - Why not systemd-boot: it only reads the FAT ESP, kernels live there and aren't in the btrfs snapshot. A plain `rootflags=subvol=<snapshot>` entry boots the current kernel against the snapshot's old `/usr/lib/modules` → missing modules after any kernel update. Needs a kernel + initramfs copy per snapshot on the ESP; limine-snapper-sync does exactly that, nothing maintained does it for systemd-boot.
   - ESP size: ≥ 2 GB for the per-snapshot kernel copies.
 - Session pitfall: with plain autologin a Hyprland crash while locked respawns an unlocked session, hence autologin once per boot (`/run/workstation-autologin`).
-- TODO: a font package; with Hyprland's default config all text is tofu (no fonts installed yet), kitty included.
-- Hyprland base config: own `hyprland.lua` without Omarchy's bootstrap, defaults, toggles and paths modules. Monitor-bound workspaces, tile-by-default window rules, keybindings above.
-- Monitor popup: script on Hyprland's `monitoradded` event (socket2) shows a fuzzel menu, applies monitor + workspace rules, moves workspaces.
+- Fonts: none installed yet; ghostty embeds its own, fuzzel gets Adwaita Sans via a dependency. JetBrainsMono NL comes with the theme (`ttf-jetbrains-mono-nerd` is 232 MB installed, mind the VM disk).
+- Done (part 3): `.config/hypr/` (`colors.lua` = the look's only colors, swap in the theme), `.config/uwsm/env`, `bin/workstation-launch-or-focus [--tui] CLASS CMD` (TUIs in ghostty with class `org.workstation.<name>`).
+- Monitors (`.config/hypr/monitors.lua`): Hyprland's Lua `monitor.added`/`removed` events instead of a socket2 daemon. Unknown monitor (not in the host file, another one already on) → `workstation-monitors ask <output>` (fuzzel: extend right/left/above, mirror, only this monitor, disable); Super+Ctrl+D = `workstation-monitors` (pick a monitor first). Order: host file order, then left to right; never disables every screen.
+- Host files: `.config/hypr/hosts/<hostname>.lua` call `require("monitors").set({...})` with the monitors in order. Names `rutger-desktop` / `rutger-laptop` (dev-env: `rutger-*-omarchy`): set that hostname at install. TODO: real modes/positions/scales from dev-env's untracked `monitors.lua` on each machine; desktop order assumed DP-1, DP-2, HDMI-A-1 (left to right).
+- Machine type: `workstation-machine` prints `laptop` (a power supply of type Battery without scope Device) or `desktop`. Idle and bar use it; a fake QEMU battery makes the VM a laptop.
+- Bound to scripts later parts must provide (exact names): `workstation-power-menu` (Super+Esc), `workstation-cheatsheet` (Super+F1, binds carry descriptions: `hyprctl binds`), `workstation-idle-toggle` (Super+Ctrl+I), `workstation-battery-menu` (Super+Ctrl+P), `workstation-screenshot` (Super+Ctrl+S, Print), `workstation-record` (Super+Ctrl+R), `workstation-clipboard` (Super+Ctrl+V), `workstation-emoji` (Super+Ctrl+E), `workstation-webcam` (Super+Ctrl+C). Packages still missing for binds: zen-browser, yazi, discord, spotatui, bitwarden (`bitwarden-desktop`), steam, impala, bluetui, wiremix, ydotool (Super+V), gpu-screen-recorder-ui + gsr-clip-share (Super+C), useful-autoclicker (Alt+F6).
 - Bar: waybar. Custom modules: battery (watts + time-left/time-to-full format), battery menu on Super+Ctrl+P (charger W/V/A from `/sys/class/power_supply/ucsi-source-psy-*` or `/sys/class/typec`, fallback battery `voltage_now`/`current_now`; check what the laptop exposes), Claude usage (poll every few minutes), Tailscale (status only, no click action). mpris for now playing.
 - Launcher and menus: fuzzel (also power menu, monitor popup, emoji, clipboard via cliphist). Lighter than walker, no background service.
 - Notifications: mako, popups only.
 - Lock, idle, wallpaper: hyprlock, hypridle on laptop only (dim 4m30s; 5m lock + suspend; lock before sleep), logind lid switch → suspend, hyprpaper.
   - Per-host: laptop suspend-then-hibernate (port dev-env's sleep.conf). hibernate-unlock only matters with LUKS; if ever needed, rewrite for hyprlock (its `omarchy-shell lock isLocked` and `/etc/pam.d/omarchy-lock-password` don't exist here). Desktop: no hypridle listeners at all (manual lock only).
   - Idle inhibit: Hyprland `idleinhibit fullscreen` window rule + Super+Ctrl+I toggle with a bar indicator.
-- Monitor popup memory: choices stored per monitor (make/model/serial from `hyprctl monitors`), reapplied silently on reconnect.
+- Monitor popup memory: `~/.local/state/workstation/monitors`, one `<choice> <description>` line per monitor (description = make model serial; outputs without one, like headless, by name), reapplied silently on reconnect.
 - Screenshots and recording: grim, slurp, satty, gpu-screen-recorder.
 - Webcam photo (Super+Ctrl+C): ffmpeg grabs one frame from v4l2 (skip first ~10 frames so auto-exposure settles, ~0.5-1s), saves to ~/Pictures/Webcam/<timestamp>.jpg, copies it to the clipboard (wl-copy) and opens it in imv. No shutter sound or flash. Desktop: only if a webcam is connected, else notify "no camera". Test in VM with a fake v4l2loopback device.
 - Audio, bluetooth, network: pipewire + wireplumber + wiremix, bluez + bluetui, NetworkManager or iwd + impala.
 - Theming: Granite palette, JetBrainsMono NL Nerd Font, cursor, GTK/Qt dark mode. No theme switcher.
-- Own scripts for the `omarchy-*` commands dev-env calls: lock, shutdown, launch-or-focus, webapp install, tzupdate, Tailscale service.
+- Own scripts for the `omarchy-*` commands dev-env calls: lock, shutdown, webapp install, tzupdate, Tailscale service.
 
 ## 3. Fedora specifics
 
@@ -166,6 +169,7 @@ Not in the VM, Rutger on hardware: battery/charger, lid, hibernate, real webcam,
 - Snapshots: `snapper` (same name, in `packages.lst`) + `python3-dnf-plugin-snapper` instead of snap-pac; `install/snapper.sh` is shared. Check that the plugin's snapshots use cleanup "number".
 - TODO: bootable snapshots. limine-snapper-sync isn't packaged for Fedora; Fedora's default is GRUB, so grub-btrfs is the likely route. Its kernel cmdline: no `rhgb quiet` (Fedora's default) via grubby.
 - `install/login.sh` should work as is (agetty via PATH, zsh at /usr/bin/zsh).
+- Part 3 packages: same names in `packages.lst` (fuzzel, wl-clipboard, brightnessctl, playerctl, pipewire, wireplumber, btop, jq); ghostty from COPR `scottames/ghostty` (in `fedora.sh`), `pipewire-pulseaudio` instead of `pipewire-pulse`.
 - TODOs for features blocked on Fedora go here.
 
 ## 4. Port from dev-env

@@ -1,4 +1,11 @@
 # Same package name on Arch and Fedora. Distro-specific names go in packages.<distro>.lst.
-kitty
+brightnessctl
+btop
+fuzzel
+jq
+pipewire
+playerctl
 snapper
+wireplumber
+wl-clipboard
 zsh

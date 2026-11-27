@@ -2,6 +2,7 @@
 
 # COPR repos, owner/project
 coprs=(
+  scottames/ghostty
 )
 
 setup_repos() {
